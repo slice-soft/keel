@@ -1,0 +1,29 @@
+<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" width="400" height="200">
+  <!-- Mast -->
+  <line x1="200" y1="20" x2="200" y2="120" stroke="#1e3a5f" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Sail left -->
+  <path d="M200 25 L130 110 L200 110 Z" fill="#3B82F6" opacity="0.9"/>
+
+  <!-- Sail right -->
+  <path d="M200 40 L270 110 L200 110 Z" fill="#60A5FA" opacity="0.8"/>
+
+  <!-- Flag -->
+  <path d="M200 20 L225 30 L200 40 Z" fill="#1e3a5f"/>
+
+  <!-- Hull -->
+  <path d="M100 120 L300 120 L280 150 L120 150 Z" fill="#1e3a5f"/>
+
+  <!-- Hull bottom -->
+  <path d="M120 150 L280 150 L260 165 L140 165 Z" fill="#172d4a"/>
+
+  <!-- KEEL text on hull -->
+  <text x="200" y="142" font-family="monospace" font-size="16" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="4">KEEL</text>
+
+  <!-- Water -->
+  <path d="M20 170 Q60 160 100 170 Q140 180 180 170 Q220 160 260 170 Q300 180 340 170 Q370 163 390 170 L390 200 L20 200 Z" fill="#93C5FD" opacity="0.4"/>
+  <path d="M0 178 Q40 168 80 178 Q120 188 160 178 Q200 168 240 178 Q280 188 320 178 Q360 168 400 178 L400 200 L0 200 Z" fill="#3B82F6" opacity="0.3"/>
+
+  <!-- Anchor icon on sail -->
+  <text x="172" y="90" font-size="16" fill="white" opacity="0.7">⚓</text>
+</svg>
