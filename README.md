@@ -1,8 +1,17 @@
-# ⚓ Keel CLI
+<img src="assets/boat.svg" width="400" />
 
-> Opinionated Go framework CLI by slice-soft
+# Keel
 
-Keel CLI is a powerful command-line tool for scaffolding and managing Go applications with a clean, modular architecture.
+Keel is a Go framework for building REST APIs with modular 
+architecture, automatic OpenAPI, and built-in validation.
+
+[![CI](https://github.com/slice-soft/ss-keel-core/actions/workflows/ci.yml/badge.svg)](https://github.com/slice-soft/ss-keel-core/actions)
+![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)
+[![Go Report Card](https://goreportcard.com/badge/github.com/slice-soft/ss-keel-core)](https://goreportcard.com/report/github.com/slice-soft/ss-keel-core)
+[![Go Reference](https://pkg.go.dev/badge/github.com/slice-soft/ss-keel-core.svg)](https://pkg.go.dev/github.com/slice-soft/ss-keel-core)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Made in Colombia](https://img.shields.io/badge/Made%20in-Colombia-FCD116?labelColor=003893)
+
 
 ## Features
 
@@ -19,7 +28,7 @@ Keel CLI is a powerful command-line tool for scaffolding and managing Go applica
 go install github.com/slice-soft/ss-keel-cli@latest
 
 # Or download from releases
-curl -sSL https://github.com/slice-soft/ss-keel-cli/releases/latest/download/keel-$(uname -s)-$(uname -m) -o keel
+curl -sSL https://github.com/slice-soft/keel/releases/latest/download/keel-$(uname -s)-$(uname -m) -o keel
 chmod +x keel
 sudo mv keel /usr/local/bin/
 ```
