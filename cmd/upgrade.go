@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/slice-soft/ss-keel-cli/internal/updater"
+	"github.com/charmbracelet/huh"
+	"github.com/slice-soft/keel/internal/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +18,23 @@ from the official GitHub releases.
 The current binary is replaced atomically — if anything fails
 the previous version is automatically restored.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		confirm := false
+		if err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title("Upgrade keel to the latest version?").
+					Description("Current: " + version).
+					Value(&confirm),
+			),
+		).WithTheme(keelTheme).Run(); err != nil {
+			return err
+		}
+
+		if !confirm {
+			fmt.Println("  Upgrade cancelled.")
+			return nil
+		}
+
 		return updater.Upgrade(version)
 	},
 }
