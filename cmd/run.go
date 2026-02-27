@@ -12,16 +12,16 @@ import (
 
 var runCmd = &cobra.Command{
 	Use:   "run <script>",
-	Short: "Ejecuta un script definido en keel.toml",
-	Long: `Ejecuta scripts definidos en la sección [scripts] del keel.toml.
+	Short: "Run a script defined in keel.toml",
+	Long: `Runs scripts defined in the [scripts] section of keel.toml.
 
-Ejemplo de keel.toml:
+Example keel.toml:
   [scripts]
   dev   = "air -c .air.toml"
   build = "go build -o bin/app ./cmd/main.go"
   test  = "go test ./..."
 
-Uso:
+Usage:
   keel run dev
   keel run build
   keel run test`,
@@ -37,16 +37,15 @@ func runScript(cmd *cobra.Command, args []string) error {
 	viper.AddConfigPath(".")
 
 	if err := viper.ReadInConfig(); err != nil {
-		return fmt.Errorf("no se encontró keel.toml en el directorio actual")
+		return fmt.Errorf("keel.toml not found in the current directory")
 	}
 
 	scriptKey := fmt.Sprintf("scripts.%s", scriptName)
 	script := viper.GetString(scriptKey)
 
 	if script == "" {
-		// Mostrar scripts disponibles
-		fmt.Printf("❌ Script '%s' no encontrado en keel.toml\n\n", scriptName)
-		fmt.Println("Scripts disponibles:")
+		fmt.Printf("❌ Script '%s' not found in keel.toml\n\n", scriptName)
+		fmt.Println("Available scripts:")
 		scripts := viper.GetStringMapString("scripts")
 		for name, cmd := range scripts {
 			fmt.Printf("  %-12s %s\n", name, cmd)
