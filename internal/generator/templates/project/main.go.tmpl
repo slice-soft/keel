@@ -1,0 +1,25 @@
+package main
+
+import (
+	"log"
+
+	"github.com/slice-soft/ss-keel-core/config"
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+func main() {
+	app := core.New(core.KConfig{
+		Port:        config.GetEnvIntOrDefault("PORT", 3000),
+		ServiceName: config.GetEnvOrDefault("SERVICE_NAME", "{{.AppName}}"),
+		Env:         config.GetEnvOrDefault("APP_ENV", "development"),
+		Docs: core.DocsConfig{
+			Title:   "{{.AppName}} API",
+			Version: "1.0.0",
+		},
+	})
+
+	// Registra tus módulos aquí:
+	// app.Use(&users.Module{})
+
+	log.Fatal(app.Listen())
+}

@@ -1,0 +1,9 @@
+[app]
+name    = "{{.AppName}}"
+version = "1.0.0"
+
+[scripts]
+dev   = "air -c .air.toml"
+build = "go build -o bin/{{.AppName}} ./cmd/main.go"
+test  = "go test ./..."
+lint  = "golangci-lint run"

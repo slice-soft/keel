@@ -1,0 +1,12 @@
+package {{.PackageName}}
+
+import "github.com/slice-soft/ss-keel-core/core"
+
+type Module struct{}
+
+func (m *Module) Register(app *core.App) {
+	repo := New{{.PascalName}}Repository()
+	service := New{{.PascalName}}Service(repo)
+	controller := New{{.PascalName}}Controller(service)
+	app.RegisterController(controller)
+}

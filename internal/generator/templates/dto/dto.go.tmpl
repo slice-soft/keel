@@ -1,0 +1,16 @@
+package dto
+
+type Create{{.PascalName}}DTO struct {
+	// TODO: agregar campos
+	// Name string `json:"name" validate:"required" doc:"Descripción" example:"valor"`
+}
+
+type Update{{.PascalName}}DTO struct {
+	// TODO: agregar campos
+}
+
+type {{.PascalName}}DTO struct {
+	ID        string `json:"id"         doc:"UUID"`
+	CreatedAt string `json:"created_at" doc:"Fecha de creación ISO8601"`
+	UpdatedAt string `json:"updated_at" doc:"Fecha de actualización ISO8601"`
+}

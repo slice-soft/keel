@@ -1,0 +1,21 @@
+package guards
+
+import (
+	"github.com/gofiber/fiber/v2"
+)
+
+// {{.PascalName}}Guard valida el acceso a la ruta.
+func {{.PascalName}}Guard() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// TODO: implementar lógica de acceso
+		// Ejemplo: validar token, rol, permiso
+		token := c.Get("Authorization")
+		if token == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"status_code": 401,
+				"message":     "no autorizado",
+			})
+		}
+		return c.Next()
+	}
+}

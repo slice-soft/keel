@@ -1,0 +1,13 @@
+package {{.PackageName}}
+
+type {{.PascalName}}Service struct {
+	repo *{{.PascalName}}Repository
+}
+
+func New{{.PascalName}}Service(repo *{{.PascalName}}Repository) *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{repo: repo}
+}
+
+func (s *{{.PascalName}}Service) FindOne(id string) (map[string]string, error) {
+	return s.repo.FindByID(id)
+}
