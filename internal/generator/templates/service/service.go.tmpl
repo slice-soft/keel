@@ -1,0 +1,34 @@
+package {{.PackageName}}
+
+import "context"
+
+type {{.PascalName}}Service struct{}
+
+func New{{.PascalName}}Service() *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{}
+}
+
+func (s *{{.PascalName}}Service) FindAll(ctx context.Context) ([]any, error) {
+	// TODO: implement
+	return []any{}, nil
+}
+
+func (s *{{.PascalName}}Service) FindByID(ctx context.Context, id string) (any, error) {
+	// TODO: implement
+	return nil, nil
+}
+
+func (s *{{.PascalName}}Service) Create(ctx context.Context, entity any) error {
+	// TODO: implement
+	return nil
+}
+
+func (s *{{.PascalName}}Service) Update(ctx context.Context, id string, entity any) error {
+	// TODO: implement
+	return nil
+}
+
+func (s *{{.PascalName}}Service) Delete(ctx context.Context, id string) error {
+	// TODO: implement
+	return nil
+}
