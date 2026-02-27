@@ -18,7 +18,7 @@ const (
 	checkInterval = 24 * time.Hour
 )
 
-// Release representa la respuesta de la GitHub API.
+// Release represents the GitHub API release response.
 type Release struct {
 	TagName string  `json:"tag_name"`
 	Assets  []Asset `json:"assets"`
@@ -29,9 +29,9 @@ type Asset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
-// CheckAndNotify verifica si hay versión nueva en background.
-// Retorna un canal que emite el mensaje de aviso (o string vacío si no hay update).
-// No bloqueante — el caller lee el canal al final del comando.
+// CheckAndNotify checks for a new version in the background.
+// Returns a channel that emits an update notice (or empty string if no update).
+// Non-blocking — the caller reads the channel at the end of the command.
 func CheckAndNotify(currentVersion string) chan string {
 	ch := make(chan string, 1)
 
@@ -53,7 +53,7 @@ func CheckAndNotify(currentVersion string) chan string {
 
 		if isNewer(latest, currentVersion) {
 			ch <- fmt.Sprintf(
-				"\n  💡 Nueva versión disponible: %s (tienes %s)\n     Actualiza con: keel upgrade\n",
+				"\n  💡 New version available: %s (you have %s)\n     Update with: keel upgrade\n",
 				latest, currentVersion,
 			)
 		} else {
@@ -64,9 +64,9 @@ func CheckAndNotify(currentVersion string) chan string {
 	return ch
 }
 
-// Upgrade descarga e instala el binario más reciente desde GitHub Releases.
+// Upgrade downloads and installs the latest binary from GitHub Releases.
 func Upgrade(currentVersion string) error {
-	fmt.Println("\n⚓  Verificando última versión...")
+	fmt.Println("\n⚓  Checking latest version...")
 
 	release, err := fetchLatestRelease()
 	if err != nil {
@@ -74,11 +74,11 @@ func Upgrade(currentVersion string) error {
 	}
 
 	if !isNewer(release.TagName, currentVersion) {
-		fmt.Printf("  ✅ Ya tienes la versión más reciente (%s)\n\n", currentVersion)
+		fmt.Printf("  ✅ You already have the latest version (%s)\n\n", currentVersion)
 		return nil
 	}
 
-	fmt.Printf("  Nueva versión: %s (tienes %s)\n", release.TagName, currentVersion)
+	fmt.Printf("  New version: %s (you have %s)\n", release.TagName, currentVersion)
 
 	assetName := buildAssetName()
 	downloadURL := ""
@@ -90,10 +90,10 @@ func Upgrade(currentVersion string) error {
 	}
 
 	if downloadURL == "" {
-		return fmt.Errorf("no se encontró binario para %s/%s", runtime.GOOS, runtime.GOARCH)
+		return fmt.Errorf("no binary found for %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 
-	fmt.Printf("  Descargando %s...\n", assetName)
+	fmt.Printf("  Downloading %s...\n", assetName)
 
 	tmpFile, err := downloadBinary(downloadURL)
 	if err != nil {
@@ -103,17 +103,17 @@ func Upgrade(currentVersion string) error {
 
 	execPath, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("error obteniendo ruta del ejecutable: %w", err)
+		return fmt.Errorf("error resolving executable path: %w", err)
 	}
 	execPath, _ = filepath.EvalSymlinks(execPath)
 
-	fmt.Println("  Instalando...")
+	fmt.Println("  Installing...")
 
 	if err := replaceBinary(tmpFile, execPath); err != nil {
-		return fmt.Errorf("error instalando: %w", err)
+		return fmt.Errorf("error installing: %w", err)
 	}
 
-	fmt.Printf("\n  ✅ keel actualizado a %s\n\n", release.TagName)
+	fmt.Printf("\n  ✅ keel updated to %s\n\n", release.TagName)
 	return nil
 }
 
@@ -134,7 +134,7 @@ func fetchLatestRelease() (*Release, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API respondió %d", resp.StatusCode)
+		return nil, fmt.Errorf("GitHub API responded %d", resp.StatusCode)
 	}
 	var release Release
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
@@ -163,7 +163,7 @@ func downloadBinary(url string) (string, error) {
 	return tmp.Name(), nil
 }
 
-// replaceBinary reemplaza el binario actual atómicamente con backup de seguridad.
+// replaceBinary atomically replaces the current binary with a safety backup.
 func replaceBinary(newBinary, targetPath string) error {
 	if err := os.Chmod(newBinary, 0755); err != nil {
 		return err
@@ -173,15 +173,14 @@ func replaceBinary(newBinary, targetPath string) error {
 		return err
 	}
 	if err := os.Rename(newBinary, targetPath); err != nil {
-		os.Rename(backupPath, targetPath) // restaurar si falla
+		os.Rename(backupPath, targetPath) // restore if install fails
 		return err
 	}
 	os.Remove(backupPath)
 	return nil
 }
 
-// buildAssetName construye el nombre del asset según OS/arch.
-// Debe coincidir exactamente con lo que GoReleaser genera.
+// buildAssetName builds the release asset name for the current OS/arch.
 func buildAssetName() string {
 	name := fmt.Sprintf("keel_%s_%s", runtime.GOOS, runtime.GOARCH)
 	if runtime.GOOS == "windows" {
@@ -190,7 +189,7 @@ func buildAssetName() string {
 	return name
 }
 
-// — Control de frecuencia —
+// — Check frequency control —
 
 func keelDir() string {
 	home, _ := os.UserHomeDir()
@@ -219,7 +218,7 @@ func saveLastCheck() {
 	os.WriteFile(lastCheckFile(), data, 0644)
 }
 
-// isNewer compara versiones semver de forma simple.
+// isNewer compares semver versions using simple string comparison.
 func isNewer(latest, current string) bool {
 	latest = strings.TrimPrefix(latest, "v")
 	current = strings.TrimPrefix(current, "v")
