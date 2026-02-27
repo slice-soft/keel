@@ -1,0 +1,13 @@
+package scheduler
+
+import "github.com/slice-soft/ss-keel-core/core"
+
+// Register{{.PascalName}}Jobs registers all {{.KebabName}} jobs into the scheduler.
+// Usage in main.go:
+//
+//	sched := cron.New() // e.g. ss-keel-cron
+//	app.RegisterScheduler(sched)
+//	scheduler.Register{{.PascalName}}Jobs(sched)
+func Register{{.PascalName}}Jobs(s core.Scheduler) error {
+	return s.Add({{.PascalName}}Job)
+}

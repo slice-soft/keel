@@ -1,0 +1,19 @@
+package scheduler
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+// {{.PascalName}}Job is the scheduled task definition.
+var {{.PascalName}}Job = core.Job{
+	Name:     "{{.KebabName}}",
+	Schedule: "* * * * *", // every minute — adjust as needed
+	Handler:  handle{{.PascalName}},
+}
+
+func handle{{.PascalName}}(ctx context.Context) error {
+	// TODO: implement job logic
+	return nil
+}
