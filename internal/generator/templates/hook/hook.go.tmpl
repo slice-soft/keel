@@ -1,0 +1,18 @@
+package hooks
+
+import "context"
+
+// {{.PascalName}}Hook performs cleanup tasks during graceful shutdown.
+// Usage: app.OnShutdown(hook.OnShutdown)
+type {{.PascalName}}Hook struct{}
+
+func New{{.PascalName}}Hook() *{{.PascalName}}Hook {
+	return &{{.PascalName}}Hook{}
+}
+
+// OnShutdown is called during graceful shutdown.
+// Compatible with app.OnShutdown(hook.OnShutdown).
+func (h *{{.PascalName}}Hook) OnShutdown(ctx context.Context) error {
+	// TODO: implement cleanup (close connections, flush buffers, etc.)
+	return nil
+}
