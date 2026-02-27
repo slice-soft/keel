@@ -8,34 +8,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version es inyectada por GoReleaser en build time.
-// En desarrollo local muestra "dev".
+// version is injected at build time via ldflags:
+//
+//	go build -ldflags "-X github.com/slice-soft/ss-keel-cli/cmd.version=$(jq -r '."."' .release-please-manifest.json)"
+//
+// Defaults to "dev" for local development.
 var version = "dev"
 
 var rootCmd = &cobra.Command{
 	Use:     "keel",
 	Version: version,
-	Short:   "⚓ Keel CLI — Framework de Go bajo slice-soft",
+	Short:   "⚓ Keel CLI — Opinionated Go framework by slice-soft",
 	Long: `
   ⚓  K E E L  C L I
   ────────────────────────────────
-  Framework de Go opinionado por slice-soft
+  Opinionated Go framework by slice-soft
   keel.slice-soft.dev
   ────────────────────────────────`,
 
-	// PersistentPreRun corre antes de CUALQUIER subcomando.
-	// Aquí iniciamos el chequeo de actualización en background.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// No chequeamos en el comando upgrade para evitar loop
 		if cmd.Name() == "upgrade" {
 			return
 		}
-		// Guardamos el canal en el contexto para leerlo en PersistentPostRun
 		updateCh = updater.CheckAndNotify(version)
 	},
 
-	// PersistentPostRun corre después de CUALQUIER subcomando.
-	// Aquí leemos el resultado del chequeo y mostramos el aviso si hay update.
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		if updateCh == nil {
 			return
@@ -46,7 +43,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// updateCh es el canal que conecta PreRun con PostRun.
 var updateCh chan string
 
 func Execute() {
