@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
   ⚓  K E E L  C L I
   ────────────────────────────────
   Opinionated Go framework by slice-soft
-  keel.slice-soft.dev
+  keel-go.dev
   ────────────────────────────────`,
 
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {

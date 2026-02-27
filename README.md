@@ -25,7 +25,7 @@ architecture, automatic OpenAPI, and built-in validation.
 
 ```bash
 # Using Go install
-go install github.com/slice-soft/ss-keel-cli@latest
+go install github.com/slice-soft/keel@latest
 
 # Or download from releases
 curl -sSL https://github.com/slice-soft/keel/releases/latest/download/keel-$(uname -s)-$(uname -m) -o keel
@@ -152,9 +152,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Links
 
-- 🌐 Website: [keel.slice-soft.dev](https://keel.slice-soft.dev)
-- 📦 GitHub: [github.com/slice-soft/ss-keel-cli](https://github.com/slice-soft/ss-keel-cli)
-- 📝 Documentation: [docs.keel.slice-soft.dev](https://docs.keel.slice-soft.dev)
+- 🌐 Website: [keel-go.dev](https://keel-go.dev)
+- 📦 GitHub: [github.com/slice-soft/keel](https://github.com/slice-soft/keel)
+- 📝 Documentation: [docs.keel-go.dev](https://docs.keel-go.dev)
 
 ---
 

@@ -17,8 +17,8 @@ This document covers only what is specific to this repository.
 1. **Fork the repository**
 2. **Clone your fork**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ss-keel-cli.git
-   cd ss-keel-cli
+   git clone https://github.com/YOUR_USERNAME/keel.git
+   cd keel
    ```
 
 3. **Install dependencies**

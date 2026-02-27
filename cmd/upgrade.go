@@ -42,7 +42,7 @@ the previous version is automatically restored.`,
 func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf(`
   ⚓  keel %s
-  keel.slice-soft.dev
+  keel-go.dev
   github.com/slice-soft/keel-cli
 
 `, "{{.Version}}"))
@@ -53,7 +53,7 @@ func init() {
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf("\n  ⚓  keel %s\n", version)
 			fmt.Printf("  OS/Arch : %s/%s\n", runtime.GOOS, runtime.GOARCH)
-			fmt.Printf("  Site    : keel.slice-soft.dev\n\n")
+			fmt.Printf("  Site    : keel-go.dev\n\n")
 		},
 	})
 }
