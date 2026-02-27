@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/slice-soft/ss-keel-cli/internal/updater"
+	"github.com/slice-soft/keel/internal/updater"
 	"github.com/spf13/cobra"
 )
 
 // version is injected at build time via ldflags:
 //
-//	go build -ldflags "-X github.com/slice-soft/ss-keel-cli/cmd.version=$(jq -r '."."' .release-please-manifest.json)"
+//	go build -ldflags "-X github.com/slice-soft/keel/cmd.version=$(jq -r '."."' .release-please-manifest.json)"
 //
 // Defaults to "dev" for local development.
 var version = "dev"
