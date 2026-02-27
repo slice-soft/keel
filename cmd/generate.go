@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/slice-soft/ss-keel-cli/internal/generator"
+	"github.com/charmbracelet/huh"
+	"github.com/slice-soft/keel/internal/generator"
 	"github.com/spf13/cobra"
 )
 
@@ -12,10 +13,12 @@ var (
 	withCrud     bool
 	noService    bool
 	noRepository bool
+	withTests    bool
+	yesFlag      bool
 )
 
 var generateCmd = &cobra.Command{
-	Use:     "generate <type> <name>",
+	Use:     "generate <type> [name]",
 	Aliases: []string{"g"},
 	Short:   "Generate Keel files",
 	Long: `Generate files based on the specified type.
@@ -52,12 +55,23 @@ Examples:
 }
 
 func init() {
+	// Global flag: skip all interactive prompts and use defaults
+	generateCmd.PersistentFlags().BoolVarP(&yesFlag, "yes", "y", false, "Skip all interactive prompts and use defaults")
+
+	// Module structure flags
 	genModuleCmd.Flags().BoolVar(&withCrud, "with-crud", false, "Generate full CRUD with DTOs")
 	genModuleCmd.Flags().BoolVar(&noService, "no-service", false, "Controller only (omit service and repository)")
 	genModuleCmd.Flags().BoolVar(&noRepository, "no-repository", false, "Omit repository (service + controller only)")
 	genModuleCmd.MarkFlagsMutuallyExclusive("with-crud", "no-service")
 	genModuleCmd.MarkFlagsMutuallyExclusive("with-crud", "no-repository")
 	genModuleCmd.MarkFlagsMutuallyExclusive("no-service", "no-repository")
+	genModuleCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
+
+	// Test flag on other generators
+	genCrudCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
+	genControllerCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
+	genServiceCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
+	genRepositoryCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
 
 	generateCmd.AddCommand(genModuleCmd)
 	generateCmd.AddCommand(genControllerCmd)
@@ -77,34 +91,102 @@ func init() {
 // — generate module —
 
 var genModuleCmd = &cobra.Command{
-	Use:   "module <name>",
+	Use:   "module [name]",
 	Short: "Generate a full module",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name := ""
+		if len(args) > 0 {
+			name = args[0]
+		}
+
+		// Prompt for name if not provided
+		if name == "" && !yesFlag {
+			if err := promptName("Module name?", "users", &name); err != nil {
+				return err
+			}
+		}
+		if name == "" {
+			return fmt.Errorf("module name is required")
+		}
+
+		// Determine structure
+		structMode := "full"
+		structFromFlag := withCrud || noService || noRepository
+		if structFromFlag {
+			switch {
+			case withCrud:
+				structMode = "with-crud"
+			case noService:
+				structMode = "no-service"
+			case noRepository:
+				structMode = "no-repository"
+			}
+		} else if !yesFlag {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("Module structure?").
+						Options(
+							huh.NewOption("Controller + Service + Repository", "full"),
+							huh.NewOption("Controller + Service", "no-repository"),
+							huh.NewOption("Controller only", "no-service"),
+							huh.NewOption("Full CRUD with DTOs", "with-crud"),
+						).
+						Value(&structMode),
+				),
+			).WithTheme(keelTheme).Run(); err != nil {
+				return err
+			}
+		}
+
+		// Prompt for tests (unless --with-tests or --yes)
+		genTests := withTests
+		if !cmd.Flags().Changed("with-tests") && !yesFlag {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("Generate test skeletons?").
+						Value(&genTests),
+				),
+			).WithTheme(keelTheme).Run(); err != nil {
+				return err
+			}
+		}
+
+		data := generator.NewData(name)
 		data.ModuleName = generator.ReadModuleName()
 		base := filepath.Join("internal", "modules", data.PackageName)
 
 		var files []struct{ tmpl, dest string }
 
-		switch {
-		case noService:
-			// Controller only — no service, no repository
+		switch structMode {
+		case "no-service":
 			files = []struct{ tmpl, dest string }{
 				{"templates/module/module_ctrl_only.go.tmpl", filepath.Join(base, data.PackageName+".module.go")},
 				{"templates/controller/controller.go.tmpl", filepath.Join(base, data.PackageName+".controller.go")},
 			}
+			if genTests {
+				files = append(files, struct{ tmpl, dest string }{
+					"templates/module/controller_test.go.tmpl",
+					filepath.Join(base, data.PackageName+".controller_test.go"),
+				})
+			}
 
-		case noRepository:
-			// Controller + standalone service — no repository
+		case "no-repository":
 			files = []struct{ tmpl, dest string }{
 				{"templates/module/module_no_repo.go.tmpl", filepath.Join(base, data.PackageName+".module.go")},
 				{"templates/module/controller.go.tmpl", filepath.Join(base, data.PackageName+".controller.go")},
 				{"templates/service/service.go.tmpl", filepath.Join(base, data.PackageName+".service.go")},
 			}
+			if genTests {
+				files = append(files,
+					struct{ tmpl, dest string }{"templates/module/service_test.go.tmpl", filepath.Join(base, data.PackageName+".service_test.go")},
+					struct{ tmpl, dest string }{"templates/module/controller_test.go.tmpl", filepath.Join(base, data.PackageName+".controller_test.go")},
+				)
+			}
 
-		case withCrud:
-			// Full CRUD with DTOs
+		case "with-crud":
 			files = []struct{ tmpl, dest string }{
 				{"templates/module/module.go.tmpl", filepath.Join(base, data.PackageName+".module.go")},
 				{"templates/module/controller_crud.go.tmpl", filepath.Join(base, data.PackageName+".controller.go")},
@@ -112,14 +194,27 @@ var genModuleCmd = &cobra.Command{
 				{"templates/module/repository.go.tmpl", filepath.Join(base, data.PackageName+".repository.go")},
 				{"templates/dto/dto.go.tmpl", filepath.Join(base, "dto", data.SnakeName+".dto.go")},
 			}
+			if genTests {
+				files = append(files,
+					struct{ tmpl, dest string }{"templates/module/service_test.go.tmpl", filepath.Join(base, data.PackageName+".service_test.go")},
+					struct{ tmpl, dest string }{"templates/module/controller_test.go.tmpl", filepath.Join(base, data.PackageName+".controller_test.go")},
+					struct{ tmpl, dest string }{"templates/module/repository_test.go.tmpl", filepath.Join(base, data.PackageName+".repository_test.go")},
+				)
+			}
 
-		default:
-			// Full module: controller + service + repository
+		default: // full
 			files = []struct{ tmpl, dest string }{
 				{"templates/module/module.go.tmpl", filepath.Join(base, data.PackageName+".module.go")},
 				{"templates/module/controller.go.tmpl", filepath.Join(base, data.PackageName+".controller.go")},
 				{"templates/module/service.go.tmpl", filepath.Join(base, data.PackageName+".service.go")},
 				{"templates/module/repository.go.tmpl", filepath.Join(base, data.PackageName+".repository.go")},
+			}
+			if genTests {
+				files = append(files,
+					struct{ tmpl, dest string }{"templates/module/service_test.go.tmpl", filepath.Join(base, data.PackageName+".service_test.go")},
+					struct{ tmpl, dest string }{"templates/module/controller_test.go.tmpl", filepath.Join(base, data.PackageName+".controller_test.go")},
+					struct{ tmpl, dest string }{"templates/module/repository_test.go.tmpl", filepath.Join(base, data.PackageName+".repository_test.go")},
+				)
 			}
 		}
 
@@ -131,15 +226,39 @@ var genModuleCmd = &cobra.Command{
 // — generate controller —
 
 var genControllerCmd = &cobra.Command{
-	Use:   "controller <name>",
+	Use:   "controller [name]",
 	Short: "Generate a standalone controller",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Controller name?", "users")
+		if err != nil {
+			return err
+		}
+
+		genTests := withTests
+		if !cmd.Flags().Changed("with-tests") && !yesFlag {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("Generate test skeletons?").
+						Value(&genTests),
+				),
+			).WithTheme(keelTheme).Run(); err != nil {
+				return err
+			}
+		}
+
+		data := generator.NewData(name)
 		base := filepath.Join("internal", "modules", data.PackageName)
 
 		files := []struct{ tmpl, dest string }{
 			{"templates/controller/controller.go.tmpl", filepath.Join(base, data.PackageName+".controller.go")},
+		}
+		if genTests {
+			files = append(files, struct{ tmpl, dest string }{
+				"templates/module/controller_test.go.tmpl",
+				filepath.Join(base, data.PackageName+".controller_test.go"),
+			})
 		}
 
 		fmt.Printf("\n⚓  Generating controller: %s\n\n", data.PascalName)
@@ -150,15 +269,39 @@ var genControllerCmd = &cobra.Command{
 // — generate service —
 
 var genServiceCmd = &cobra.Command{
-	Use:   "service <name>",
+	Use:   "service [name]",
 	Short: "Generate a standalone service",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Service name?", "users")
+		if err != nil {
+			return err
+		}
+
+		genTests := withTests
+		if !cmd.Flags().Changed("with-tests") && !yesFlag {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("Generate test skeletons?").
+						Value(&genTests),
+				),
+			).WithTheme(keelTheme).Run(); err != nil {
+				return err
+			}
+		}
+
+		data := generator.NewData(name)
 		base := filepath.Join("internal", "modules", data.PackageName)
 
 		files := []struct{ tmpl, dest string }{
 			{"templates/service/service.go.tmpl", filepath.Join(base, data.PackageName+".service.go")},
+		}
+		if genTests {
+			files = append(files, struct{ tmpl, dest string }{
+				"templates/module/service_test.go.tmpl",
+				filepath.Join(base, data.PackageName+".service_test.go"),
+			})
 		}
 
 		fmt.Printf("\n⚓  Generating service: %s\n\n", data.PascalName)
@@ -169,15 +312,39 @@ var genServiceCmd = &cobra.Command{
 // — generate repository —
 
 var genRepositoryCmd = &cobra.Command{
-	Use:   "repository <name>",
+	Use:   "repository [name]",
 	Short: "Generate a repository",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Repository name?", "users")
+		if err != nil {
+			return err
+		}
+
+		genTests := withTests
+		if !cmd.Flags().Changed("with-tests") && !yesFlag {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("Generate test skeletons?").
+						Value(&genTests),
+				),
+			).WithTheme(keelTheme).Run(); err != nil {
+				return err
+			}
+		}
+
+		data := generator.NewData(name)
 		base := filepath.Join("internal", "modules", data.PackageName)
 
 		files := []struct{ tmpl, dest string }{
 			{"templates/module/repository.go.tmpl", filepath.Join(base, data.PackageName+".repository.go")},
+		}
+		if genTests {
+			files = append(files, struct{ tmpl, dest string }{
+				"templates/module/repository_test.go.tmpl",
+				filepath.Join(base, data.PackageName+".repository_test.go"),
+			})
 		}
 
 		fmt.Printf("\n⚓  Generating repository: %s\n\n", data.PascalName)
@@ -188,11 +355,15 @@ var genRepositoryCmd = &cobra.Command{
 // — generate middleware —
 
 var genMiddlewareCmd = &cobra.Command{
-	Use:   "middleware <name>",
+	Use:   "middleware [name]",
 	Short: "Generate a middleware",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Middleware name?", "auth")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		dest := filepath.Join("internal", "middleware", data.SnakeName+".middleware.go")
 
 		files := []struct{ tmpl, dest string }{
@@ -207,11 +378,15 @@ var genMiddlewareCmd = &cobra.Command{
 // — generate guard —
 
 var genGuardCmd = &cobra.Command{
-	Use:   "guard <name>",
+	Use:   "guard [name]",
 	Short: "Generate an access guard",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Guard name?", "admin")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		dest := filepath.Join("internal", "guards", data.SnakeName+".guard.go")
 
 		files := []struct{ tmpl, dest string }{
@@ -226,11 +401,15 @@ var genGuardCmd = &cobra.Command{
 // — generate dto —
 
 var genDtoCmd = &cobra.Command{
-	Use:   "dto <name>",
+	Use:   "dto [name]",
 	Short: "Generate standalone DTOs",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "DTO name?", "users")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		dest := filepath.Join("internal", "modules", data.PackageName, "dto", data.SnakeName+".dto.go")
 
 		files := []struct{ tmpl, dest string }{
@@ -245,11 +424,29 @@ var genDtoCmd = &cobra.Command{
 // — generate crud —
 
 var genCrudCmd = &cobra.Command{
-	Use:   "crud <name>",
+	Use:   "crud [name]",
 	Short: "Generate a full module with CRUD and DTOs",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Module name?", "users")
+		if err != nil {
+			return err
+		}
+
+		genTests := withTests
+		if !cmd.Flags().Changed("with-tests") && !yesFlag {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("Generate test skeletons?").
+						Value(&genTests),
+				),
+			).WithTheme(keelTheme).Run(); err != nil {
+				return err
+			}
+		}
+
+		data := generator.NewData(name)
 		data.ModuleName = generator.ReadModuleName()
 		base := filepath.Join("internal", "modules", data.PackageName)
 
@@ -260,6 +457,13 @@ var genCrudCmd = &cobra.Command{
 			{"templates/module/repository.go.tmpl", filepath.Join(base, data.PackageName+".repository.go")},
 			{"templates/dto/dto.go.tmpl", filepath.Join(base, "dto", data.SnakeName+".dto.go")},
 		}
+		if genTests {
+			files = append(files,
+				struct{ tmpl, dest string }{"templates/module/service_test.go.tmpl", filepath.Join(base, data.PackageName+".service_test.go")},
+				struct{ tmpl, dest string }{"templates/module/controller_test.go.tmpl", filepath.Join(base, data.PackageName+".controller_test.go")},
+				struct{ tmpl, dest string }{"templates/module/repository_test.go.tmpl", filepath.Join(base, data.PackageName+".repository_test.go")},
+			)
+		}
 
 		fmt.Printf("\n⚓  Generating full CRUD: %s\n\n", data.PascalName)
 		return renderFiles(files, data)
@@ -269,11 +473,15 @@ var genCrudCmd = &cobra.Command{
 // — generate scheduler —
 
 var genSchedulerCmd = &cobra.Command{
-	Use:   "scheduler <name>",
+	Use:   "scheduler [name]",
 	Short: "Generate a job scheduler registrar",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Scheduler name?", "reports")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		dest := filepath.Join("internal", "scheduler", data.SnakeName+".scheduler.go")
 
 		files := []struct{ tmpl, dest string }{
@@ -288,11 +496,15 @@ var genSchedulerCmd = &cobra.Command{
 // — generate job —
 
 var genJobCmd = &cobra.Command{
-	Use:   "job <name>",
+	Use:   "job [name]",
 	Short: "Generate a standalone job with its handler",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Job name?", "cleanup")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		dest := filepath.Join("internal", "scheduler", data.SnakeName+".job.go")
 
 		files := []struct{ tmpl, dest string }{
@@ -307,11 +519,15 @@ var genJobCmd = &cobra.Command{
 // — generate checker —
 
 var genCheckerCmd = &cobra.Command{
-	Use:   "checker <name>",
+	Use:   "checker [name]",
 	Short: "Generate a health checker",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Checker name?", "redis")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		dest := filepath.Join("internal", "checkers", data.SnakeName+".checker.go")
 
 		files := []struct{ tmpl, dest string }{
@@ -326,11 +542,15 @@ var genCheckerCmd = &cobra.Command{
 // — generate event —
 
 var genEventCmd = &cobra.Command{
-	Use:   "event <name>",
+	Use:   "event [name]",
 	Short: "Generate publisher + subscriber for a domain",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Event name?", "orders")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		base := filepath.Join("internal", "events")
 
 		files := []struct{ tmpl, dest string }{
@@ -346,11 +566,15 @@ var genEventCmd = &cobra.Command{
 // — generate hook —
 
 var genHookCmd = &cobra.Command{
-	Use:   "hook <name>",
+	Use:   "hook [name]",
 	Short: "Generate a shutdown hook",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data := generator.NewData(args[0])
+		name, err := resolveName(args, "Hook name?", "database")
+		if err != nil {
+			return err
+		}
+		data := generator.NewData(name)
 		dest := filepath.Join("internal", "hooks", data.SnakeName+".hook.go")
 
 		files := []struct{ tmpl, dest string }{
@@ -375,6 +599,6 @@ func renderFiles(files []struct{ tmpl, dest string }, data generator.Data) error
 		}
 		fmt.Printf("  ✓  %s\n", f.dest)
 	}
-	fmt.Println("\n  ✅ Done\n")
+	fmt.Println("\n  ✅ Done")
 	return nil
 }
