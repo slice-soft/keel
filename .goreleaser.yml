@@ -26,6 +26,20 @@ archives:
 checksum:
   name_template: checksums.txt
 
+brews:
+  - name: keel
+    repository:
+      owner: slice-soft
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://keel.slice-soft.dev"
+    description: "Opinionated Go framework CLI for building structured services"
+    license: "MIT"
+    install: |
+      bin.install "keel"
+    test: |
+      system "#{bin}/keel", "version"
+
 changelog:
   use: github
   sort: asc
