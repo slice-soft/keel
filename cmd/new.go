@@ -3,16 +3,18 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
-	"github.com/slice-soft/ss-keel-cli/internal/generator"
+	"github.com/charmbracelet/huh"
+	"github.com/slice-soft/keel/internal/generator"
 	"github.com/spf13/cobra"
 )
 
 var newCmd = &cobra.Command{
-	Use:   "new <app-name>",
+	Use:   "new [app-name]",
 	Short: "Create a new Keel project",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runNew,
 }
 
@@ -23,20 +25,81 @@ func init() {
 }
 
 func runNew(cmd *cobra.Command, args []string) error {
-	appName := args[0]
-
-	moduleName := moduleFlag
-	if moduleName == "" {
-		moduleName = appName
+	appName := ""
+	if len(args) > 0 {
+		appName = args[0]
 	}
 
-	data := generator.NewProjectData(appName, moduleName)
+	fmt.Println()
+	fmt.Println("  ⚓  Welcome to Keel!")
+	fmt.Println()
+
+	// Step 1: ask for project name if not provided
+	if appName == "" {
+		nameForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Title("Where should we create your project?").
+					Placeholder("my-app").
+					Validate(func(s string) error {
+						if s == "" {
+							return fmt.Errorf("project name cannot be empty")
+						}
+						return nil
+					}).
+					Value(&appName),
+			),
+		).WithTheme(huh.ThemeCharm())
+
+		if err := nameForm.Run(); err != nil {
+			return err
+		}
+	}
 
 	if _, err := os.Stat(appName); err == nil {
 		return fmt.Errorf("directory '%s' already exists", appName)
 	}
 
-	fmt.Printf("\n⚓  Creating Keel project: %s\n\n", appName)
+	// Step 2: ask for module name, git and deps
+	moduleName := moduleFlag
+	if moduleName == "" {
+		moduleName = appName
+	}
+
+	initGit := true
+	installDeps := true
+
+	configFields := []huh.Field{
+		huh.NewInput().
+			Title("Go module name?").
+			Placeholder("github.com/user/" + appName).
+			Value(&moduleName),
+		huh.NewConfirm().
+			Title("Initialize a new git repository?").
+			Value(&initGit),
+		huh.NewConfirm().
+			Title("Install dependencies?").
+			Description("Runs go mod tidy").
+			Value(&installDeps),
+	}
+
+	// Skip module question if --module flag was explicitly provided
+	if moduleFlag != "" {
+		configFields = configFields[1:]
+	}
+
+	configForm := huh.NewForm(
+		huh.NewGroup(configFields...),
+	).WithTheme(huh.ThemeCharm())
+
+	if err := configForm.Run(); err != nil {
+		return err
+	}
+
+	// Generate files
+	data := generator.NewProjectData(appName, moduleName)
+
+	fmt.Printf("\n  Creating project files...\n\n")
 
 	files := []struct {
 		tmpl string
@@ -72,8 +135,35 @@ func runNew(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  ✓ %s/\n", d)
 	}
 
+	// Post-step: git init
+	if initGit {
+		fmt.Println()
+		gitCmd := exec.Command("git", "init", appName)
+		gitCmd.Stdout = os.Stdout
+		gitCmd.Stderr = os.Stderr
+		if err := gitCmd.Run(); err != nil {
+			fmt.Printf("  ⚠  git init failed: %v\n", err)
+		} else {
+			fmt.Println("  ✓ Git repository initialized")
+		}
+	}
+
+	// Post-step: go mod tidy
+	if installDeps {
+		fmt.Println()
+		tidyCmd := exec.Command("go", "mod", "tidy")
+		tidyCmd.Dir = appName
+		tidyCmd.Stdout = os.Stdout
+		tidyCmd.Stderr = os.Stderr
+		if err := tidyCmd.Run(); err != nil {
+			fmt.Printf("  ⚠  go mod tidy failed: %v\n", err)
+		} else {
+			fmt.Println("  ✓ Dependencies installed")
+		}
+	}
+
 	fmt.Printf(`
-  ✅ Project '%s' created successfully
+  ✅ Project '%s' ready!
 
   Next steps:
     cd %s
