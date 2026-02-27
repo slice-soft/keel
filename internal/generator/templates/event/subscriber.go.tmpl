@@ -1,0 +1,27 @@
+package events
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+// {{.PascalName}}Subscriber consumes {{.KebabName}} domain events.
+type {{.PascalName}}Subscriber struct {
+	sub core.Subscriber
+}
+
+func New{{.PascalName}}Subscriber(sub core.Subscriber) *{{.PascalName}}Subscriber {
+	return &{{.PascalName}}Subscriber{sub: sub}
+}
+
+// Subscribe registers all {{.KebabName}} event handlers.
+// Call this after the app is configured, e.g. in main.go or a module Register().
+func (s *{{.PascalName}}Subscriber) Subscribe(ctx context.Context) error {
+	return s.sub.Subscribe(ctx, "{{.KebabName}}.created", s.on{{.PascalName}}Created)
+}
+
+func (s *{{.PascalName}}Subscriber) on{{.PascalName}}Created(ctx context.Context, msg core.Message) error {
+	// TODO: handle the event (msg.Payload contains the raw bytes)
+	return nil
+}
