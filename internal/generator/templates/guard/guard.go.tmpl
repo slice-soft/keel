@@ -2,18 +2,27 @@ package guards
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/slice-soft/ss-keel-core/core"
 )
 
-// {{.PascalName}}Guard valida el acceso a la ruta.
-func {{.PascalName}}Guard() fiber.Handler {
+// {{.PascalName}}Guard validates access to protected routes.
+// Usage: route.Use(guard.Middleware()).WithSecured("bearerAuth")
+type {{.PascalName}}Guard struct{}
+
+var _ core.Guard = (*{{.PascalName}}Guard)(nil)
+
+func New{{.PascalName}}Guard() *{{.PascalName}}Guard {
+	return &{{.PascalName}}Guard{}
+}
+
+func (g *{{.PascalName}}Guard) Middleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// TODO: implementar lógica de acceso
-		// Ejemplo: validar token, rol, permiso
+		// TODO: implement access logic (token, role, permission, etc.)
 		token := c.Get("Authorization")
 		if token == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"status_code": 401,
-				"message":     "no autorizado",
+				"message":     "unauthorized",
 			})
 		}
 		return c.Next()
