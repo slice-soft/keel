@@ -1,0 +1,101 @@
+package {{.PackageName}}
+
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"{{.ModuleName}}/internal/modules/{{.PackageName}}/dto"
+)
+
+type {{.PascalName}}Controller struct {
+	svc *{{.PascalName}}Service
+}
+
+func New{{.PascalName}}Controller(svc *{{.PascalName}}Service) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{svc: svc}
+}
+
+func (c *{{.PascalName}}Controller) Routes() []core.Route {
+	return []core.Route{
+		core.GET("/{{.KebabName}}", c.FindAll).
+			Tag("{{.KebabName}}").
+			Describe("List {{.KebabName}}", "Returns a paginated list of {{.KebabName}}").
+			WithResponse(core.WithResponse[core.Page[dto.{{.PascalName}}DTO]](200)).
+			WithQueryParam("page", "integer", false, "Page number (default 1)").
+			WithQueryParam("limit", "integer", false, "Items per page (default 20, max 100)"),
+
+		core.GET("/{{.KebabName}}/:id", c.FindOne).
+			Tag("{{.KebabName}}").
+			Describe("Get {{.KebabName}} by ID").
+			WithResponse(core.WithResponse[dto.{{.PascalName}}DTO](200)),
+
+		core.POST("/{{.KebabName}}", c.Create).
+			Tag("{{.KebabName}}").
+			Describe("Create {{.KebabName}}").
+			WithBody(core.WithBody[dto.Create{{.PascalName}}DTO]()).
+			WithResponse(core.WithResponse[dto.{{.PascalName}}DTO](201)),
+
+		core.PUT("/{{.KebabName}}/:id", c.Update).
+			Tag("{{.KebabName}}").
+			Describe("Update {{.KebabName}}").
+			WithBody(core.WithBody[dto.Update{{.PascalName}}DTO]()).
+			WithResponse(core.WithResponse[dto.{{.PascalName}}DTO](200)),
+
+		core.DELETE("/{{.KebabName}}/:id", c.Delete).
+			Tag("{{.KebabName}}").
+			Describe("Delete {{.KebabName}}"),
+	}
+}
+
+func (c *{{.PascalName}}Controller) FindAll(ctx *core.Ctx) error {
+	q := ctx.ParsePagination()
+	result, err := c.svc.FindAll(ctx.Context(), q)
+	if err != nil {
+		return err
+	}
+	return ctx.OK(result)
+}
+
+func (c *{{.PascalName}}Controller) FindOne(ctx *core.Ctx) error {
+	id := ctx.Params("id")
+	result, err := c.svc.FindByID(ctx.Context(), id)
+	if err != nil {
+		return err
+	}
+	return ctx.OK(result)
+}
+
+func (c *{{.PascalName}}Controller) Create(ctx *core.Ctx) error {
+	var body dto.Create{{.PascalName}}DTO
+	if err := ctx.ParseBody(&body); err != nil {
+		return err
+	}
+	entity := &{{.PascalName}}{
+		// TODO: map body fields to entity
+	}
+	if err := c.svc.Create(ctx.Context(), entity); err != nil {
+		return err
+	}
+	return ctx.Created(entity)
+}
+
+func (c *{{.PascalName}}Controller) Update(ctx *core.Ctx) error {
+	id := ctx.Params("id")
+	var body dto.Update{{.PascalName}}DTO
+	if err := ctx.ParseBody(&body); err != nil {
+		return err
+	}
+	entity := &{{.PascalName}}{
+		// TODO: map body fields to entity
+	}
+	if err := c.svc.Update(ctx.Context(), id, entity); err != nil {
+		return err
+	}
+	return ctx.OK(entity)
+}
+
+func (c *{{.PascalName}}Controller) Delete(ctx *core.Ctx) error {
+	id := ctx.Params("id")
+	if err := c.svc.Delete(ctx.Context(), id); err != nil {
+		return err
+	}
+	return ctx.NoContent()
+}
