@@ -11,7 +11,7 @@ import (
 
 var newCmd = &cobra.Command{
 	Use:   "new <app-name>",
-	Short: "Crea un nuevo proyecto Keel",
+	Short: "Create a new Keel project",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runNew,
 }
@@ -19,7 +19,7 @@ var newCmd = &cobra.Command{
 var moduleFlag string
 
 func init() {
-	newCmd.Flags().StringVar(&moduleFlag, "module", "", "Nombre del módulo Go (ej: github.com/user/mi-app)")
+	newCmd.Flags().StringVar(&moduleFlag, "module", "", "Go module name (e.g. github.com/user/my-app)")
 }
 
 func runNew(cmd *cobra.Command, args []string) error {
@@ -32,12 +32,11 @@ func runNew(cmd *cobra.Command, args []string) error {
 
 	data := generator.NewProjectData(appName, moduleName)
 
-	// Verificar que no exista ya el directorio
 	if _, err := os.Stat(appName); err == nil {
-		return fmt.Errorf("ya existe un directorio llamado '%s'", appName)
+		return fmt.Errorf("directory '%s' already exists", appName)
 	}
 
-	fmt.Printf("\n⚓  Creando proyecto Keel: %s\n\n", appName)
+	fmt.Printf("\n⚓  Creating Keel project: %s\n\n", appName)
 
 	files := []struct {
 		tmpl string
@@ -52,16 +51,19 @@ func runNew(cmd *cobra.Command, args []string) error {
 
 	for _, f := range files {
 		if err := generator.RenderToFile(f.tmpl, f.dest, data); err != nil {
-			return fmt.Errorf("error generando %s: %w", f.dest, err)
+			return fmt.Errorf("error generating %s: %w", f.dest, err)
 		}
 		fmt.Printf("  ✓ %s\n", f.dest)
 	}
 
-	// Crear carpetas vacías necesarias
 	dirs := []string{
 		filepath.Join(appName, "internal", "modules"),
 		filepath.Join(appName, "internal", "middleware"),
 		filepath.Join(appName, "internal", "guards"),
+		filepath.Join(appName, "internal", "scheduler"),
+		filepath.Join(appName, "internal", "checkers"),
+		filepath.Join(appName, "internal", "events"),
+		filepath.Join(appName, "internal", "hooks"),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
@@ -71,9 +73,9 @@ func runNew(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf(`
-  ✅ Proyecto '%s' creado exitosamente
+  ✅ Project '%s' created successfully
 
-  Próximos pasos:
+  Next steps:
     cd %s
     keel run dev
 
