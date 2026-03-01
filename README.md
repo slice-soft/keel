@@ -144,7 +144,19 @@ host = "localhost"
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and repository-specific rules.
+The base workflow, commit conventions, and community standards live in [ss-community](https://github.com/slice-soft/ss-community/blob/main/CONTRIBUTING.md).
+
+## Community
+
+| Document | |
+|---|---|
+| [CONTRIBUTING.md](https://github.com/slice-soft/ss-community/blob/main/CONTRIBUTING.md) | Workflow, commit conventions, and PR guidelines |
+| [GOVERNANCE.md](https://github.com/slice-soft/ss-community/blob/main/GOVERNANCE.md) | Decision-making, roles, and release process |
+| [CODE_OF_CONDUCT.md](https://github.com/slice-soft/ss-community/blob/main/CODE_OF_CONDUCT.md) | Community standards |
+| [VERSIONING.md](https://github.com/slice-soft/ss-community/blob/main/VERSIONING.md) | SemVer policy and breaking changes |
+| [SECURITY.md](https://github.com/slice-soft/ss-community/blob/main/SECURITY.md) | How to report vulnerabilities |
+| [MAINTAINERS.md](https://github.com/slice-soft/ss-community/blob/main/MAINTAINERS.md) | Active maintainers |
 
 ## License
 
@@ -152,10 +164,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Links
 
-- 🌐 Website: [keel-go.dev](https://keel-go.dev)
-- 📦 GitHub: [github.com/slice-soft/keel](https://github.com/slice-soft/keel)
-- 📝 Documentation: [docs.keel-go.dev](https://docs.keel-go.dev)
+- Website: [keel-go.dev](https://keel-go.dev)
+- GitHub: [github.com/slice-soft/ss-keel-cli](https://github.com/slice-soft/ss-keel-cli)
+- Documentation: [docs.keel-go.dev](https://docs.keel-go.dev)
 
 ---
 
-Made with ⚓ by [slice-soft](https://slice-soft.dev)
+Made by [SliceSoft](https://slicesoft.dev) — Colombia 💙

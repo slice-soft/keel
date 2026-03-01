@@ -1,5 +1,5 @@
 
-# Contributing to ss-keel-core
+# Contributing to ss-keel-cli
 
 The base contributing guide — workflow, commit conventions, PR guidelines, and community standards — lives in the [ss-community](https://github.com/slice-soft/ss-community/blob/main/CONTRIBUTING.md) repository. Read it first.
 
