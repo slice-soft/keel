@@ -1,4 +1,4 @@
-<img src="assets/boat.svg" width="400" />
+<img src="https://cdn.slicesoft.dev/boat.svg" width="400" />
 
 # Keel
 
