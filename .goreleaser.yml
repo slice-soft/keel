@@ -32,7 +32,7 @@ brews:
       owner: slice-soft
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: "https://keel.slice-soft.dev"
+    homepage: "https://keel-go.dev"
     description: "Opinionated Go framework CLI for building structured services"
     license: "MIT"
     install: |
