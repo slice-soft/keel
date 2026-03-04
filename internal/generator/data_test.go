@@ -1,0 +1,64 @@
+package generator
+
+import "testing"
+
+func TestNewData(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantPackage string
+		wantPascal  string
+		wantCamel   string
+		wantKebab   string
+		wantSnake   string
+	}{
+		{
+			name:        "simple",
+			input:       "users",
+			wantPackage: "users",
+			wantPascal:  "Users",
+			wantCamel:   "users",
+			wantKebab:   "users",
+			wantSnake:   "users",
+		},
+		{
+			name:        "kebab case",
+			input:       "user-profile",
+			wantPackage: "userprofile",
+			wantPascal:  "UserProfile",
+			wantCamel:   "userProfile",
+			wantKebab:   "user-profile",
+			wantSnake:   "user_profile",
+		},
+		{
+			name:        "mixed separators",
+			input:       "user_profile service",
+			wantPackage: "userprofileservice",
+			wantPascal:  "UserProfileService",
+			wantCamel:   "userProfileService",
+			wantKebab:   "user-profile-service",
+			wantSnake:   "user_profile_service",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewData(tt.input)
+			if got.PackageName != tt.wantPackage {
+				t.Fatalf("PackageName: expected %q, got %q", tt.wantPackage, got.PackageName)
+			}
+			if got.PascalName != tt.wantPascal {
+				t.Fatalf("PascalName: expected %q, got %q", tt.wantPascal, got.PascalName)
+			}
+			if got.CamelName != tt.wantCamel {
+				t.Fatalf("CamelName: expected %q, got %q", tt.wantCamel, got.CamelName)
+			}
+			if got.KebabName != tt.wantKebab {
+				t.Fatalf("KebabName: expected %q, got %q", tt.wantKebab, got.KebabName)
+			}
+			if got.SnakeName != tt.wantSnake {
+				t.Fatalf("SnakeName: expected %q, got %q", tt.wantSnake, got.SnakeName)
+			}
+		})
+	}
+}
