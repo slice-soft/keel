@@ -2,14 +2,22 @@ package main
 
 import (
 	"log"
-
+	{{- if .UseEnv }}
+	"github.com/joho/godotenv"
+	{{- end }}
 	"github.com/slice-soft/ss-keel-core/config"
 	"github.com/slice-soft/ss-keel-core/core"
 )
 
 func main() {
+	{{- if .UseEnv }}
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("No se pudo cargar el archivo .env: %v", err)
+	}
+	{{- end }}
 	app := core.New(core.KConfig{
-		Port:        config.GetEnvIntOrDefault("PORT", 3000),
+		Port:        config.GetEnvIntOrDefault("PORT", 7331),
 		ServiceName: config.GetEnvOrDefault("SERVICE_NAME", "{{.AppName}}"),
 		Env:         config.GetEnvOrDefault("APP_ENV", "development"),
 		Docs: core.DocsConfig{
