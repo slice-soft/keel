@@ -59,6 +59,14 @@ type genFile struct {
 	data     generator.Data
 }
 
+func logCreated(path string) {
+	fmt.Printf("  + created %s\n", path)
+}
+
+func logUpdated(path string) {
+	fmt.Printf("  ~ updated %s\n", path)
+}
+
 func execute(genType, rawName string, opts Options) error {
 	if err := validateKeelProject(); err != nil {
 		return err
@@ -135,6 +143,7 @@ func generateModule(name string, opts Options) error {
 		if err := generator.RenderToFile(file.template, file.dest, file.data); err != nil {
 			return err
 		}
+		logCreated(file.dest)
 	}
 
 	return regenerateModuleRegistry(name)
@@ -260,6 +269,7 @@ func createFiles(files []genFile) error {
 		if err := generator.RenderToFile(file.template, file.dest, file.data); err != nil {
 			return err
 		}
+		logCreated(file.dest)
 	}
 	return nil
 }
@@ -383,7 +393,17 @@ func regenerateModuleRegistry(moduleName string) error {
 	moduleData.Controllers = toRegistrations(controllers)
 	moduleData.Repositories = toRegistrations(repositories)
 
-	return generator.RenderToFile("templates/generate/module/module.go.tmpl", moduleRegistryPath(moduleName), moduleData)
+	dest := moduleRegistryPath(moduleName)
+	alreadyExisted := generator.FileExists(dest)
+	if err := generator.RenderToFile("templates/generate/module/module.go.tmpl", dest, moduleData); err != nil {
+		return err
+	}
+	if alreadyExisted {
+		logUpdated(dest)
+	} else {
+		logCreated(dest)
+	}
+	return nil
 }
 
 func listComponents(dir, suffix string) ([]string, error) {
