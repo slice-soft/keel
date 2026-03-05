@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/slice-soft/keel/cmd/completion"
 	initcmd "github.com/slice-soft/keel/cmd/init"
 	"github.com/slice-soft/keel/cmd/new"
 	"github.com/slice-soft/keel/cmd/run"
@@ -58,7 +59,8 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(new.NewCommand())
 	rootCmd.AddCommand(initcmd.NewCommand())
-	rootCmd.AddCommand(generateCmd)
+	rootCmd.AddCommand(completion.NewCommand(rootCmd))
+	// rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(run.NewCommand())
-	rootCmd.AddCommand(upgradeCmd)
+	// rootCmd.AddCommand(upgradeCmd)
 }
