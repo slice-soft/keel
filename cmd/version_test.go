@@ -54,3 +54,42 @@ func TestSyncRootVersionOutputUsesSharedRenderer(t *testing.T) {
 		t.Fatalf("expected root long help header to match renderer")
 	}
 }
+
+func TestColorHelpers(t *testing.T) {
+	t.Run("colors disabled with NO_COLOR", func(t *testing.T) {
+		t.Setenv("NO_COLOR", "1")
+		t.Setenv("TERM", "xterm-256color")
+		if colorsEnabled() {
+			t.Fatalf("expected colors to be disabled with NO_COLOR")
+		}
+	})
+
+	t.Run("colors disabled with dumb term", func(t *testing.T) {
+		t.Setenv("NO_COLOR", "")
+		t.Setenv("TERM", "dumb")
+		if colorsEnabled() {
+			t.Fatalf("expected colors to be disabled for TERM=dumb")
+		}
+	})
+
+	t.Run("colors enabled otherwise", func(t *testing.T) {
+		t.Setenv("NO_COLOR", "")
+		t.Setenv("TERM", "xterm")
+		if !colorsEnabled() {
+			t.Fatalf("expected colors to be enabled")
+		}
+	})
+
+	t.Run("colorize applies escape codes when enabled", func(t *testing.T) {
+		colored := colorize("hello", colorCyan, true)
+		if !strings.Contains(colored, colorCyan) || !strings.Contains(colored, colorReset) {
+			t.Fatalf("expected colored output with ANSI wrappers, got %q", colored)
+		}
+	})
+
+	t.Run("colorize returns plain text when disabled", func(t *testing.T) {
+		if got := colorize("hello", colorCyan, false); got != "hello" {
+			t.Fatalf("expected plain text, got %q", got)
+		}
+	})
+}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/slice-soft/keel/cmd/completion"
@@ -41,11 +42,13 @@ var rootCmd = &cobra.Command{
 }
 
 var updateCh chan string
+var stderrWriter io.Writer = os.Stderr
+var exitFn = os.Exit
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fmt.Fprintln(stderrWriter, err)
+		exitFn(1)
 	}
 }
 
