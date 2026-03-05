@@ -1,0 +1,24 @@
+package starter
+
+import "github.com/slice-soft/ss-keel-core/core"
+
+type Controller struct {
+	svc *Service
+}
+
+func NewController(svc *Service) *Controller {
+	return &Controller{svc: svc}
+}
+
+func (c *Controller) Routes() []core.Route {
+	return []core.Route{
+		core.GET("/hello", c.Hello).
+			Tag("starter").
+			Describe("Starter hello route").
+			WithResponse(core.WithResponse[HelloResponseDTO](200)),
+	}
+}
+
+func (c *Controller) Hello(ctx *core.Ctx) error {
+	return ctx.OK(c.svc.Hello())
+}

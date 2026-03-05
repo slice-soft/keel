@@ -1,0 +1,13 @@
+package starter
+
+type Service struct{}
+
+func NewService() *Service {
+	return &Service{}
+}
+
+func (s *Service) Hello() HelloResponseDTO {
+	return HelloResponseDTO{
+		Message: "hola",
+	}
+}
