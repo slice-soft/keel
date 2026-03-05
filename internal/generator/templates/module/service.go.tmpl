@@ -3,17 +3,21 @@ package {{.PackageName}}
 import (
 	"context"
 
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 type {{.PascalName}}Service struct {
+	log *logger.Logger
 }
 
-func New{{.PascalName}}Service() *{{.PascalName}}Service {
-	return &{{.PascalName}}Service{}
+func New{{.PascalName}}Service(log *logger.Logger) *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{log: log}
 }
 
 func (s *{{.PascalName}}Service) Hello(ctx context.Context) (string, error) {
+	if s.log != nil {
+		s.log.Info("handling {{.KebabName}} hello request")
+	}
 	// Implement your business logic here
 	return "Hello from {{.PascalName}}Service!", nil
 }

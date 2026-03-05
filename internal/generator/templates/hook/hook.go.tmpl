@@ -1,18 +1,27 @@
 package hooks
 
-import "context"
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
 // {{.PascalName}}Hook performs cleanup tasks during graceful shutdown.
 // Usage: app.OnShutdown(hook.OnShutdown)
-type {{.PascalName}}Hook struct{}
+type {{.PascalName}}Hook struct {
+	log *logger.Logger
+}
 
-func New{{.PascalName}}Hook() *{{.PascalName}}Hook {
-	return &{{.PascalName}}Hook{}
+func New{{.PascalName}}Hook(log *logger.Logger) *{{.PascalName}}Hook {
+	return &{{.PascalName}}Hook{log: log}
 }
 
 // OnShutdown is called during graceful shutdown.
 // Compatible with app.OnShutdown(hook.OnShutdown).
 func (h *{{.PascalName}}Hook) OnShutdown(ctx context.Context) error {
+	if h.log != nil {
+		h.log.Info("running {{.KebabName}} shutdown hook")
+	}
 	// TODO: implement cleanup (close connections, flush buffers, etc.)
 	return nil
 }

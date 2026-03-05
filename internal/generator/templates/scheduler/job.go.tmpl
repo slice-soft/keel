@@ -4,16 +4,24 @@ import (
 	"context"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-// {{.PascalName}}Job is the scheduled task definition.
-var {{.PascalName}}Job = core.Job{
-	Name:     "{{.KebabName}}",
-	Schedule: "* * * * *", // every minute — adjust as needed
-	Handler:  handle{{.PascalName}},
+// New{{.PascalName}}Job builds the scheduled task definition.
+func New{{.PascalName}}Job(log *logger.Logger) core.Job {
+	return core.Job{
+		Name:     "{{.KebabName}}",
+		Schedule: "* * * * *", // every minute — adjust as needed
+		Handler: func(ctx context.Context) error {
+			return handle{{.PascalName}}(ctx, log)
+		},
+	}
 }
 
-func handle{{.PascalName}}(ctx context.Context) error {
+func handle{{.PascalName}}(ctx context.Context, log *logger.Logger) error {
+	if log != nil {
+		log.Info("running {{.KebabName}} scheduler job")
+	}
 	// TODO: implement job logic
 	return nil
 }

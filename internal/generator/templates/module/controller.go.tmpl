@@ -1,13 +1,17 @@
 package {{.PackageName}}
 
-import "github.com/slice-soft/ss-keel-core/core"
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
 type {{.PascalName}}Controller struct {
 	svc *{{.PascalName}}Service
+	log *logger.Logger
 }
 
-func New{{.PascalName}}Controller(svc *{{.PascalName}}Service) *{{.PascalName}}Controller {
-	return &{{.PascalName}}Controller{svc: svc}
+func New{{.PascalName}}Controller(svc *{{.PascalName}}Service, log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{svc: svc, log: log}
 }
 
 func (c *{{.PascalName}}Controller) Routes() []core.Route {

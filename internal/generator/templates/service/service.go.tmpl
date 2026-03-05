@@ -1,34 +1,55 @@
 package {{.PackageName}}
 
-import "context"
+import (
+	"context"
 
-type {{.PascalName}}Service struct{}
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
-func New{{.PascalName}}Service() *{{.PascalName}}Service {
-	return &{{.PascalName}}Service{}
+type {{.PascalName}}Service struct {
+	log *logger.Logger
+}
+
+func New{{.PascalName}}Service(log *logger.Logger) *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{log: log}
 }
 
 func (s *{{.PascalName}}Service) FindAll(ctx context.Context) ([]any, error) {
+	if s.log != nil {
+		s.log.Debug("listing {{.KebabName}} entities")
+	}
 	// TODO: implement
 	return []any{}, nil
 }
 
 func (s *{{.PascalName}}Service) FindByID(ctx context.Context, id string) (any, error) {
+	if s.log != nil {
+		s.log.Debug("finding {{.KebabName}} entity by id: %s", id)
+	}
 	// TODO: implement
 	return nil, nil
 }
 
 func (s *{{.PascalName}}Service) Create(ctx context.Context, entity any) error {
+	if s.log != nil {
+		s.log.Info("creating {{.KebabName}} entity")
+	}
 	// TODO: implement
 	return nil
 }
 
 func (s *{{.PascalName}}Service) Update(ctx context.Context, id string, entity any) error {
+	if s.log != nil {
+		s.log.Info("updating {{.KebabName}} entity id=%s", id)
+	}
 	// TODO: implement
 	return nil
 }
 
 func (s *{{.PascalName}}Service) Delete(ctx context.Context, id string) error {
+	if s.log != nil {
+		s.log.Warn("deleting {{.KebabName}} entity id=%s", id)
+	}
 	// TODO: implement
 	return nil
 }

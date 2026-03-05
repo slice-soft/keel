@@ -1,11 +1,16 @@
 package {{.PackageName}}
 
-import "github.com/slice-soft/ss-keel-core/core"
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
-type {{.PascalName}}Controller struct{}
+type {{.PascalName}}Controller struct {
+	log *logger.Logger
+}
 
-func New{{.PascalName}}Controller() *{{.PascalName}}Controller {
-	return &{{.PascalName}}Controller{}
+func New{{.PascalName}}Controller(log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{log: log}
 }
 
 func (c *{{.PascalName}}Controller) Routes() []core.Route {
@@ -25,12 +30,18 @@ func (c *{{.PascalName}}Controller) Routes() []core.Route {
 func (c *{{.PascalName}}Controller) FindAll(ctx *core.Ctx) error {
 	q := ctx.ParsePagination()
 	_ = q
+	if c.log != nil {
+		c.log.Info("handling {{.KebabName}} find all request")
+	}
 	// TODO: implement
 	return ctx.OK([]any{})
 }
 
 func (c *{{.PascalName}}Controller) FindOne(ctx *core.Ctx) error {
 	id := ctx.Params("id")
+	if c.log != nil {
+		c.log.Info("handling {{.KebabName}} find one request id=%s", id)
+	}
 	// TODO: implement
 	return ctx.OK(map[string]string{"id": id})
 }

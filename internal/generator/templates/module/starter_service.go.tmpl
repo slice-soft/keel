@@ -1,12 +1,20 @@
 package starter
 
-type Service struct{}
+import "github.com/slice-soft/ss-keel-core/logger"
 
-func NewService() *Service {
-	return &Service{}
+type Service struct {
+	log *logger.Logger
+}
+
+func NewService(log *logger.Logger) *Service {
+	return &Service{log: log}
 }
 
 func (s *Service) Hello() HelloResponseDTO {
+	if s.log != nil {
+		s.log.Info("processing starter hello endpoint")
+	}
+
 	return HelloResponseDTO{
 		Message: "hello",
 	}
