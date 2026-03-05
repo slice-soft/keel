@@ -189,8 +189,6 @@ func buildAssetName() string {
 	return name
 }
 
-// — Check frequency control —
-
 func keelDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".keel")

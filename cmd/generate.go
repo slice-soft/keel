@@ -55,10 +55,8 @@ Examples:
 }
 
 func init() {
-	// Global flag: skip all interactive prompts and use defaults
 	generateCmd.PersistentFlags().BoolVarP(&yesFlag, "yes", "y", false, "Skip all interactive prompts and use defaults")
 
-	// Module structure flags
 	genModuleCmd.Flags().BoolVar(&withCrud, "with-crud", false, "Generate full CRUD with DTOs")
 	genModuleCmd.Flags().BoolVar(&noService, "no-service", false, "Controller only (omit service and repository)")
 	genModuleCmd.Flags().BoolVar(&noRepository, "no-repository", false, "Omit repository (service + controller only)")
@@ -67,7 +65,6 @@ func init() {
 	genModuleCmd.MarkFlagsMutuallyExclusive("no-service", "no-repository")
 	genModuleCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
 
-	// Test flag on other generators
 	genCrudCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
 	genControllerCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
 	genServiceCmd.Flags().BoolVar(&withTests, "with-tests", false, "Generate test skeleton files")
@@ -88,8 +85,6 @@ func init() {
 	generateCmd.AddCommand(genHookCmd)
 }
 
-// — generate module —
-
 var genModuleCmd = &cobra.Command{
 	Use:   "module [name]",
 	Short: "Generate a full module",
@@ -100,7 +95,6 @@ var genModuleCmd = &cobra.Command{
 			name = args[0]
 		}
 
-		// Prompt for name if not provided
 		if name == "" && !yesFlag {
 			if err := promptName("Module name?", "users", &name); err != nil {
 				return err
@@ -110,7 +104,6 @@ var genModuleCmd = &cobra.Command{
 			return fmt.Errorf("module name is required")
 		}
 
-		// Determine structure
 		structMode := "full"
 		structFromFlag := withCrud || noService || noRepository
 		if structFromFlag {
@@ -140,7 +133,6 @@ var genModuleCmd = &cobra.Command{
 			}
 		}
 
-		// Prompt for tests (unless --with-tests or --yes)
 		genTests := withTests
 		if !cmd.Flags().Changed("with-tests") && !yesFlag {
 			if err := huh.NewForm(
@@ -223,8 +215,6 @@ var genModuleCmd = &cobra.Command{
 	},
 }
 
-// — generate controller —
-
 var genControllerCmd = &cobra.Command{
 	Use:   "controller [name]",
 	Short: "Generate a standalone controller",
@@ -265,8 +255,6 @@ var genControllerCmd = &cobra.Command{
 		return renderFiles(files, data)
 	},
 }
-
-// — generate service —
 
 var genServiceCmd = &cobra.Command{
 	Use:   "service [name]",
@@ -309,8 +297,6 @@ var genServiceCmd = &cobra.Command{
 	},
 }
 
-// — generate repository —
-
 var genRepositoryCmd = &cobra.Command{
 	Use:   "repository [name]",
 	Short: "Generate a repository",
@@ -352,8 +338,6 @@ var genRepositoryCmd = &cobra.Command{
 	},
 }
 
-// — generate middleware —
-
 var genMiddlewareCmd = &cobra.Command{
 	Use:   "middleware [name]",
 	Short: "Generate a middleware",
@@ -374,8 +358,6 @@ var genMiddlewareCmd = &cobra.Command{
 		return renderFiles(files, data)
 	},
 }
-
-// — generate guard —
 
 var genGuardCmd = &cobra.Command{
 	Use:   "guard [name]",
@@ -398,8 +380,6 @@ var genGuardCmd = &cobra.Command{
 	},
 }
 
-// — generate dto —
-
 var genDtoCmd = &cobra.Command{
 	Use:   "dto [name]",
 	Short: "Generate standalone DTOs",
@@ -420,8 +400,6 @@ var genDtoCmd = &cobra.Command{
 		return renderFiles(files, data)
 	},
 }
-
-// — generate crud —
 
 var genCrudCmd = &cobra.Command{
 	Use:   "crud [name]",
@@ -470,8 +448,6 @@ var genCrudCmd = &cobra.Command{
 	},
 }
 
-// — generate scheduler —
-
 var genSchedulerCmd = &cobra.Command{
 	Use:   "scheduler [name]",
 	Short: "Generate a job scheduler registrar",
@@ -492,8 +468,6 @@ var genSchedulerCmd = &cobra.Command{
 		return renderFiles(files, data)
 	},
 }
-
-// — generate job —
 
 var genJobCmd = &cobra.Command{
 	Use:   "job [name]",
@@ -516,8 +490,6 @@ var genJobCmd = &cobra.Command{
 	},
 }
 
-// — generate checker —
-
 var genCheckerCmd = &cobra.Command{
 	Use:   "checker [name]",
 	Short: "Generate a health checker",
@@ -538,8 +510,6 @@ var genCheckerCmd = &cobra.Command{
 		return renderFiles(files, data)
 	},
 }
-
-// — generate event —
 
 var genEventCmd = &cobra.Command{
 	Use:   "event [name]",
@@ -563,8 +533,6 @@ var genEventCmd = &cobra.Command{
 	},
 }
 
-// — generate hook —
-
 var genHookCmd = &cobra.Command{
 	Use:   "hook [name]",
 	Short: "Generate a shutdown hook",
@@ -585,8 +553,6 @@ var genHookCmd = &cobra.Command{
 		return renderFiles(files, data)
 	},
 }
-
-// — helper —
 
 func renderFiles(files []struct{ tmpl, dest string }, data generator.Data) error {
 	for _, f := range files {
