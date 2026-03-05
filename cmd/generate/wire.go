@@ -17,9 +17,10 @@ func ensureModuleRegisteredInMain(moduleName string) error {
 
 	data := generator.NewData(moduleName)
 	importPath := fmt.Sprintf("\"%s/internal/modules/%s\"", modulePath, data.PackageName)
-	useLine := fmt.Sprintf("\tapp.Use(&%s.Module{})", data.PackageName)
+	useLine := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger))", data.PackageName)
 
 	return updateMainGo(func(content string) string {
+		content = ensureAppLoggerBootstrap(content)
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
@@ -38,9 +39,10 @@ func ensureStandaloneServiceRegisteredInMain(componentName string) error {
 
 	data := generator.NewData(componentName)
 	importPath := fmt.Sprintf("\"%s/internal/services\"", modulePath)
-	useLine := fmt.Sprintf("\t_ = services.New%sService()", data.PascalName)
+	useLine := fmt.Sprintf("\t_ = services.New%sService(appLogger)", data.PascalName)
 
 	return updateMainGo(func(content string) string {
+		content = ensureAppLoggerBootstrap(content)
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
@@ -59,9 +61,10 @@ func ensureStandaloneControllerRegisteredInMain(componentName string) error {
 
 	data := generator.NewData(componentName)
 	importPath := fmt.Sprintf("\"%s/internal/controllers\"", modulePath)
-	registerLine := fmt.Sprintf("\tapp.RegisterController(controllers.New%sController())", data.PascalName)
+	registerLine := fmt.Sprintf("\tapp.RegisterController(controllers.New%sController(appLogger))", data.PascalName)
 
 	return updateMainGo(func(content string) string {
+		content = ensureAppLoggerBootstrap(content)
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
@@ -97,9 +100,10 @@ func ensureSchedulerRegisteredInMain(componentName string) error {
 	data := generator.NewData(componentName)
 	importPath := fmt.Sprintf("\"%s/internal/scheduler\"", modulePath)
 	setupLine := "\tgeneratedScheduler := scheduler.NewInMemoryScheduler()\n\tapp.RegisterScheduler(generatedScheduler)"
-	registerLine := fmt.Sprintf("\tif err := scheduler.Register%sJobs(generatedScheduler); err != nil {\n\t\tlog.Printf(\"failed to register %s jobs: %%v\", err)\n\t}", data.PascalName, data.KebabName)
+	registerLine := fmt.Sprintf("\tif err := scheduler.Register%sJobs(generatedScheduler, appLogger); err != nil {\n\t\tappLogger.Error(\"failed to register %s jobs: %%v\", err)\n\t}", data.PascalName, data.KebabName)
 
 	return updateMainGo(func(content string) string {
+		content = ensureAppLoggerBootstrap(content)
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
@@ -121,9 +125,10 @@ func ensureCheckerRegisteredInMain(componentName string) error {
 
 	data := generator.NewData(componentName)
 	importPath := fmt.Sprintf("\"%s/internal/checkers\"", modulePath)
-	registerLine := fmt.Sprintf("\tapp.RegisterHealthChecker(checkers.New%sChecker())", data.PascalName)
+	registerLine := fmt.Sprintf("\tapp.RegisterHealthChecker(checkers.New%sChecker(appLogger))", data.PascalName)
 
 	return updateMainGo(func(content string) string {
+		content = ensureAppLoggerBootstrap(content)
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
@@ -142,9 +147,10 @@ func ensureHookRegisteredInMain(componentName string) error {
 
 	data := generator.NewData(componentName)
 	importPath := fmt.Sprintf("\"%s/internal/hooks\"", modulePath)
-	registerLine := fmt.Sprintf("\tapp.OnShutdown(hooks.New%sHook().OnShutdown)", data.PascalName)
+	registerLine := fmt.Sprintf("\tapp.OnShutdown(hooks.New%sHook(appLogger).OnShutdown)", data.PascalName)
 
 	return updateMainGo(func(content string) string {
+		content = ensureAppLoggerBootstrap(content)
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
@@ -162,13 +168,21 @@ func updateMainGo(transform func(string) string) error {
 		return err
 	}
 
-	updated := transform(string(body))
+	original := string(body)
+	updated := transform(original)
 	formatted, err := format.Source([]byte(updated))
 	if err == nil {
 		updated = string(formatted)
 	}
+	if updated == original {
+		return nil
+	}
 
-	return os.WriteFile(mainPath, []byte(updated), 0644)
+	if err := os.WriteFile(mainPath, []byte(updated), 0644); err != nil {
+		return err
+	}
+	logUpdated(mainPath)
+	return nil
 }
 
 func addImport(content, importPath string) string {
@@ -192,10 +206,33 @@ func addImport(content, importPath string) string {
 }
 
 func addMainLine(content, line string) string {
-	marker := "log.Fatal(app.Listen())"
-	idx := strings.Index(content, marker)
-	if idx == -1 {
-		return content
+	markers := []string{
+		"\tlog.Fatal(app.Listen())",
+		"\tif err := app.Listen(); err != nil {",
+		"log.Fatal(app.Listen())",
+		"if err := app.Listen(); err != nil {",
 	}
-	return content[:idx] + line + "\n\n\t" + content[idx:]
+
+	for _, marker := range markers {
+		idx := strings.Index(content, marker)
+		if idx != -1 {
+			return content[:idx] + line + "\n\n" + content[idx:]
+		}
+	}
+
+	return content
+}
+
+func ensureAppLoggerBootstrap(content string) string {
+	loggerImport := "\"github.com/slice-soft/ss-keel-core/logger\""
+	if !strings.Contains(content, loggerImport) {
+		content = addImport(content, loggerImport)
+	}
+
+	loggerInit := "\tappLogger := logger.NewLogger(config.GetEnvOrDefault(\"APP_ENV\", \"development\") == \"production\")"
+	if !strings.Contains(content, "appLogger := logger.NewLogger(") {
+		content = addMainLine(content, loggerInit)
+	}
+
+	return content
 }

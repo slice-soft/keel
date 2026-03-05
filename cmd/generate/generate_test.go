@@ -98,13 +98,16 @@ func TestGenerateModuleDefaultsAndAlias(t *testing.T) {
 	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_service.go"))
 	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_controller.go"))
 	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "users", "users_module.go"))
-	if !strings.Contains(moduleContent, "usersController := NewUsersController()") {
+	if !strings.Contains(moduleContent, "usersController := NewUsersController(m.log)") {
 		t.Fatalf("expected controller variable suffix to avoid collisions, got:\\n%s", moduleContent)
 	}
 
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
-	if !strings.Contains(mainContent, "app.Use(&users.Module{})") {
+	if !strings.Contains(mainContent, "app.Use(users.NewModule(appLogger))") {
 		t.Fatalf("expected users module registration in cmd/main.go, got:\n%s", mainContent)
+	}
+	if !strings.Contains(mainContent, "appLogger := logger.NewLogger(") {
+		t.Fatalf("expected logger bootstrap in cmd/main.go, got:\n%s", mainContent)
 	}
 }
 
@@ -286,13 +289,13 @@ func TestGenerateStandaloneSchedulerCheckerHookRegistersMain(t *testing.T) {
 	if !strings.Contains(mainContent, "app.RegisterScheduler(generatedScheduler)") {
 		t.Fatalf("expected scheduler registration in main.go, got:\n%s", mainContent)
 	}
-	if !strings.Contains(mainContent, "scheduler.RegisterNightlyJobsJobs(generatedScheduler)") {
+	if !strings.Contains(mainContent, "scheduler.RegisterNightlyJobsJobs(generatedScheduler, appLogger)") {
 		t.Fatalf("expected scheduler job registration in main.go, got:\n%s", mainContent)
 	}
-	if !strings.Contains(mainContent, "app.RegisterHealthChecker(checkers.NewCacheChecker())") {
+	if !strings.Contains(mainContent, "app.RegisterHealthChecker(checkers.NewCacheChecker(appLogger))") {
 		t.Fatalf("expected checker registration in main.go, got:\n%s", mainContent)
 	}
-	if !strings.Contains(mainContent, "app.OnShutdown(hooks.NewShutdownHook().OnShutdown)") {
+	if !strings.Contains(mainContent, "app.OnShutdown(hooks.NewShutdownHook(appLogger).OnShutdown)") {
 		t.Fatalf("expected hook registration in main.go, got:\n%s", mainContent)
 	}
 }
