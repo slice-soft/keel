@@ -1,60 +1,29 @@
 package {{.PackageName}}
 
-import "github.com/slice-soft/ss-keel-core/core"
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
 type {{.PascalName}}Controller struct {
-	service *{{.PascalName}}Service
+	svc *{{.PascalName}}Service
+	log *logger.Logger
 }
 
-func New{{.PascalName}}Controller(s *{{.PascalName}}Service) *{{.PascalName}}Controller {
-	return &{{.PascalName}}Controller{service: s}
+func New{{.PascalName}}Controller(svc *{{.PascalName}}Service, log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{svc: svc, log: log}
 }
 
 func (c *{{.PascalName}}Controller) Routes() []core.Route {
 	return []core.Route{
 		core.GET("/{{.KebabName}}", c.FindAll).
 			Tag("{{.KebabName}}").
-			Describe("Listar {{.KebabName}}"),
+			Describe("List {{.KebabName}}").
+			WithQueryParam("page", "integer", false, "Page number").
+			WithQueryParam("limit", "integer", false, "Items per page"),
 
 		core.GET("/{{.KebabName}}/:id", c.FindOne).
 			Tag("{{.KebabName}}").
-			Describe("Obtener {{.KebabName}} por ID"),
-
-		core.POST("/{{.KebabName}}", c.Create).
-			Tag("{{.KebabName}}").
-			Describe("Crear {{.KebabName}}"),
-
-		core.PUT("/{{.KebabName}}/:id", c.Update).
-			Tag("{{.KebabName}}").
-			Describe("Actualizar {{.KebabName}}"),
-
-		core.DELETE("/{{.KebabName}}/:id", c.Delete).
-			Tag("{{.KebabName}}").
-			Describe("Eliminar {{.KebabName}}"),
+			Describe("Get {{.KebabName}} by ID"),
 	}
-}
-
-func (c *{{.PascalName}}Controller) FindAll(ctx *core.Ctx) error {
-	return ctx.OK([]map[string]string{})
-}
-
-func (c *{{.PascalName}}Controller) FindOne(ctx *core.Ctx) error {
-	id := ctx.Params("id")
-	result, err := c.service.FindOne(id)
-	if err != nil {
-		return ctx.NotFound()
-	}
-	return ctx.OK(result)
-}
-
-func (c *{{.PascalName}}Controller) Create(ctx *core.Ctx) error {
-	return ctx.Created(map[string]string{"message": "creado"})
-}
-
-func (c *{{.PascalName}}Controller) Update(ctx *core.Ctx) error {
-	return ctx.OK(map[string]string{"message": "actualizado"})
-}
-
-func (c *{{.PascalName}}Controller) Delete(ctx *core.Ctx) error {
-	return ctx.NoContent()
 }

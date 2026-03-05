@@ -1,0 +1,67 @@
+package {{.PackageName}}
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+type {{.PascalName}}Entity struct {
+	ID string `json:"id"`
+}
+
+type {{.PascalName}}Repository struct {
+	log *logger.Logger
+}
+
+var _ core.Repository[{{.PascalName}}Entity, string] = (*{{.PascalName}}Repository)(nil)
+
+func New{{.PascalName}}Repository(log *logger.Logger) *{{.PascalName}}Repository {
+	return &{{.PascalName}}Repository{log: log}
+}
+
+func (r *{{.PascalName}}Repository) FindByID(ctx context.Context, id string) (*{{.PascalName}}Entity, error) {
+	_ = ctx
+	if r.log != nil {
+		r.log.Debug("finding {{.KebabName}} by id: %s", id)
+	}
+	return &{{.PascalName}}Entity{ID: id}, nil
+}
+
+func (r *{{.PascalName}}Repository) FindAll(ctx context.Context, q core.PageQuery) (core.Page[{{.PascalName}}Entity], error) {
+	_ = ctx
+	if r.log != nil {
+		r.log.Debug("listing {{.KebabName}} page=%d limit=%d", q.Page, q.Limit)
+	}
+	items := []{{.PascalName}}Entity{}
+	return core.NewPage(items, 0, q.Page, q.Limit), nil
+}
+
+func (r *{{.PascalName}}Repository) Create(ctx context.Context, entity *{{.PascalName}}Entity) error {
+	_ = ctx
+	_ = entity
+	if r.log != nil {
+		r.log.Info("creating {{.KebabName}} entity")
+	}
+	return nil
+}
+
+func (r *{{.PascalName}}Repository) Update(ctx context.Context, id string, entity *{{.PascalName}}Entity) error {
+	_ = ctx
+	_ = id
+	_ = entity
+	if r.log != nil {
+		r.log.Info("updating {{.KebabName}} entity id=%s", id)
+	}
+	return nil
+}
+
+func (r *{{.PascalName}}Repository) Delete(ctx context.Context, id string) error {
+	_ = ctx
+	_ = id
+	if r.log != nil {
+		r.log.Warn("deleting {{.KebabName}} entity id=%s", id)
+	}
+	return nil
+}

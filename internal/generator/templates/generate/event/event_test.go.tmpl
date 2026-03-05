@@ -1,0 +1,64 @@
+package events
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+type {{.CamelName}}PublisherStub struct {
+	called bool
+}
+
+func (p *{{.CamelName}}PublisherStub) Publish(ctx context.Context, msg core.Message) error {
+	_ = ctx
+	p.called = true
+	if msg.Topic == "" {
+		return errors.New("missing topic")
+	}
+	return nil
+}
+
+func (p *{{.CamelName}}PublisherStub) Close() error {
+	return nil
+}
+
+type {{.CamelName}}SubscriberStub struct {
+	called bool
+}
+
+func (s *{{.CamelName}}SubscriberStub) Subscribe(ctx context.Context, topic string, handler core.MessageHandler) error {
+	_ = ctx
+	s.called = true
+	if topic == "" {
+		return errors.New("missing topic")
+	}
+	return handler(context.Background(), core.Message{Topic: topic})
+}
+
+func (s *{{.CamelName}}SubscriberStub) Close() error {
+	return nil
+}
+
+func Test{{.PascalName}}EventComponents(t *testing.T) {
+	pubStub := &{{.CamelName}}PublisherStub{}
+	pub := New{{.PascalName}}Publisher(pubStub, logger.NewLogger(false))
+	if err := pub.Publish{{.PascalName}}Created(context.Background(), []byte("ok")); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if !pubStub.called {
+		t.Fatal("expected publish to be called")
+	}
+
+	subStub := &{{.CamelName}}SubscriberStub{}
+	sub := New{{.PascalName}}Subscriber(subStub, logger.NewLogger(false))
+	if err := sub.Subscribe(context.Background()); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if !subStub.called {
+		t.Fatal("expected subscribe to be called")
+	}
+}

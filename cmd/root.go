@@ -2,40 +2,35 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
-	"github.com/slice-soft/ss-keel-cli/internal/updater"
+	"github.com/slice-soft/keel/cmd/completion"
+	"github.com/slice-soft/keel/cmd/generate"
+	initcmd "github.com/slice-soft/keel/cmd/init"
+	"github.com/slice-soft/keel/cmd/new"
+	"github.com/slice-soft/keel/cmd/run"
+	"github.com/slice-soft/keel/internal/updater"
 	"github.com/spf13/cobra"
 )
 
-// version es inyectada por GoReleaser en build time.
-// En desarrollo local muestra "dev".
-var version = "dev"
+// Build metadata is injected at build time via ldflags.
+//
+// Defaults are used for local development.
+var (
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
+)
 
 var rootCmd = &cobra.Command{
-	Use:     "keel",
-	Version: version,
-	Short:   "⚓ Keel CLI — Framework de Go bajo slice-soft",
-	Long: `
-  ⚓  K E E L  C L I
-  ────────────────────────────────
-  Framework de Go opinionado por slice-soft
-  keel.slice-soft.dev
-  ────────────────────────────────`,
+	Use:   "keel",
+	Short: "⚓ Keel CLI — Opinionated Go framework by slice-soft",
 
-	// PersistentPreRun corre antes de CUALQUIER subcomando.
-	// Aquí iniciamos el chequeo de actualización en background.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// No chequeamos en el comando upgrade para evitar loop
-		if cmd.Name() == "upgrade" {
-			return
-		}
-		// Guardamos el canal en el contexto para leerlo en PersistentPostRun
 		updateCh = updater.CheckAndNotify(version)
 	},
 
-	// PersistentPostRun corre después de CUALQUIER subcomando.
-	// Aquí leemos el resultado del chequeo y mostramos el aviso si hay update.
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		if updateCh == nil {
 			return
@@ -46,19 +41,29 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// updateCh es el canal que conecta PreRun con PostRun.
 var updateCh chan string
+var stderrWriter io.Writer = os.Stderr
+var exitFn = os.Exit
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fmt.Fprintln(stderrWriter, err)
+		exitFn(1)
 	}
 }
 
 func init() {
-	rootCmd.AddCommand(newCmd)
-	rootCmd.AddCommand(generateCmd)
-	rootCmd.AddCommand(runCmd)
-	rootCmd.AddCommand(upgradeCmd)
+	syncRootVersionOutput()
+	rootCmd.AddCommand(new.NewCommand())
+	rootCmd.AddCommand(initcmd.NewCommand())
+	rootCmd.AddCommand(generate.NewCommand())
+	rootCmd.AddCommand(completion.NewCommand(rootCmd))
+	rootCmd.AddCommand(run.NewCommand())
+}
+
+func syncRootVersionOutput() {
+	versionOutput := renderVersionOutput(version, commit, buildDate)
+	rootCmd.Version = versionOutput
+	rootCmd.Long = versionOutput
+	rootCmd.SetVersionTemplate("{{.Version}}")
 }

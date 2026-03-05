@@ -1,13 +1,23 @@
 package {{.PackageName}}
 
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
 type {{.PascalName}}Service struct {
-	repo *{{.PascalName}}Repository
+	log *logger.Logger
 }
 
-func New{{.PascalName}}Service(repo *{{.PascalName}}Repository) *{{.PascalName}}Service {
-	return &{{.PascalName}}Service{repo: repo}
+func New{{.PascalName}}Service(log *logger.Logger) *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{log: log}
 }
 
-func (s *{{.PascalName}}Service) FindOne(id string) (map[string]string, error) {
-	return s.repo.FindByID(id)
+func (s *{{.PascalName}}Service) Hello(ctx context.Context) (string, error) {
+	if s.log != nil {
+		s.log.Info("handling {{.KebabName}} hello request")
+	}
+	// Implement your business logic here
+	return "Hello from {{.PascalName}}Service!", nil
 }

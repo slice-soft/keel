@@ -1,0 +1,23 @@
+package hooks
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+type {{.PascalName}}Hook struct {
+	log *logger.Logger
+}
+
+func New{{.PascalName}}Hook(log *logger.Logger) *{{.PascalName}}Hook {
+	return &{{.PascalName}}Hook{log: log}
+}
+
+func (h *{{.PascalName}}Hook) OnShutdown(ctx context.Context) error {
+	_ = ctx
+	if h.log != nil {
+		h.log.Info("running {{.KebabName}} shutdown hook")
+	}
+	return nil
+}

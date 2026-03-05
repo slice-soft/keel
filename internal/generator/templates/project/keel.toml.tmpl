@@ -1,9 +1,31 @@
 [app]
+{{- if eq .TemplateMode "init" }}
+name    = ""
+version = ""
+{{- else }}
 name    = "{{.AppName}}"
 version = "1.0.0"
+{{- end }}
 
 [scripts]
+{{- if .UseAir }}
+{{- if .UseAirConfig }}
 dev   = "air -c .air.toml"
+{{- else }}
+dev   = "air"
+{{- end }}
+{{- else }}
+dev   = "go run ./cmd/main.go"
+{{- end }}
 build = "go build -o bin/{{.AppName}} ./cmd/main.go"
 test  = "go test ./..."
 lint  = "golangci-lint run"
+
+
+[features]
+{{- if .UseAir }}
+air = true
+{{- end }}
+{{- if .UseEnv }}
+env = true
+{{- end }}

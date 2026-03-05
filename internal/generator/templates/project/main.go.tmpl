@@ -1,15 +1,27 @@
 package main
 
 import (
-	"log"
-
+	{{- if .UseEnv }}
+	"github.com/joho/godotenv"
+	{{- end }}
+	{{- if .UseStarterModule }}
+	"{{.ModuleName}}/internal/modules/starter"
+	{{- end }}
 	"github.com/slice-soft/ss-keel-core/config"
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 func main() {
+	appLogger := logger.NewLogger(config.GetEnvOrDefault("APP_ENV", "development") == "production")
+	{{- if .UseEnv }}
+	err := godotenv.Load()
+	if err != nil {
+		appLogger.Warn("Could not load .env file: %v", err)
+	}
+	{{- end }}
 	app := core.New(core.KConfig{
-		Port:        config.GetEnvIntOrDefault("PORT", 3000),
+		Port:        config.GetEnvIntOrDefault("PORT", 7331),
 		ServiceName: config.GetEnvOrDefault("SERVICE_NAME", "{{.AppName}}"),
 		Env:         config.GetEnvOrDefault("APP_ENV", "development"),
 		Docs: core.DocsConfig{
@@ -18,8 +30,14 @@ func main() {
 		},
 	})
 
-	// Registra tus módulos aquí:
-	// app.Use(&users.Module{})
+	// Register your modules here:
+	{{- if .UseStarterModule }}
+	app.Use(starter.NewModule(appLogger))
+	{{- else }}
+	// app.Use(users.NewModule(appLogger))
+	{{- end }}
 
-	log.Fatal(app.Listen())
+	if err := app.Listen(); err != nil {
+		appLogger.Error("failed to start app: %v", err)
+	}
 }

@@ -1,0 +1,32 @@
+package checkers
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+// {{.PascalName}}Checker checks the health of the {{.KebabName}} dependency.
+// Usage: app.RegisterHealthChecker(New{{.PascalName}}Checker())
+type {{.PascalName}}Checker struct {
+	log *logger.Logger
+}
+
+var _ core.HealthChecker = (*{{.PascalName}}Checker)(nil)
+
+func New{{.PascalName}}Checker(log *logger.Logger) *{{.PascalName}}Checker {
+	return &{{.PascalName}}Checker{log: log}
+}
+
+func (c *{{.PascalName}}Checker) Name() string {
+	return "{{.KebabName}}"
+}
+
+func (c *{{.PascalName}}Checker) Check(ctx context.Context) error {
+	if c.log != nil {
+		c.log.Debug("running {{.KebabName}} health check")
+	}
+	// TODO: implement health check (e.g. ping DB, Redis, external service)
+	return nil
+}

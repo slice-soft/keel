@@ -1,0 +1,52 @@
+version: 2
+
+builds:
+  - binary: keel
+    main: .
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/slice-soft/keel/cmd.version={{.Version}}
+      - -X github.com/slice-soft/keel/cmd.commit={{.Commit}}
+      - -X github.com/slice-soft/keel/cmd.buildDate={{.Date}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "keel_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+brews:
+  - name: keel
+    repository:
+      owner: slice-soft
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://keel-go.dev"
+    description: "Opinionated Go framework CLI for building structured services"
+    license: "MIT"
+    install: |
+      bin.install "keel"
+    test: |
+      system "#{bin}/keel", "version"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

@@ -1,0 +1,18 @@
+package checkers
+
+import (
+	"context"
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+func Test{{.PascalName}}Checker(t *testing.T) {
+	checker := New{{.PascalName}}Checker(logger.NewLogger(false))
+	if checker.Name() != "{{.KebabName}}" {
+		t.Fatalf("unexpected checker name: %s", checker.Name())
+	}
+	if err := checker.Check(context.Background()); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}

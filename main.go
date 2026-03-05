@@ -1,6 +1,6 @@
 package main
 
-import "github.com/slice-soft/ss-keel-cli/cmd"
+import "github.com/slice-soft/keel/cmd"
 
 func main() {
 	cmd.Execute()

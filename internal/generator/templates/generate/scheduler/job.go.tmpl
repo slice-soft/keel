@@ -1,0 +1,26 @@
+package scheduler
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+func New{{.PascalName}}Job(log *logger.Logger) core.Job {
+	return core.Job{
+		Name:     "{{.KebabName}}",
+		Schedule: "* * * * *",
+		Handler: func(ctx context.Context) error {
+			return handle{{.PascalName}}(ctx, log)
+		},
+	}
+}
+
+func handle{{.PascalName}}(ctx context.Context, log *logger.Logger) error {
+	_ = ctx
+	if log != nil {
+		log.Info("running {{.KebabName}} scheduler job")
+	}
+	return nil
+}

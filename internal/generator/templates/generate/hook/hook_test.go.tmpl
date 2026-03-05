@@ -1,0 +1,18 @@
+package hooks
+
+import (
+	"context"
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+func Test{{.PascalName}}Hook(t *testing.T) {
+	hook := New{{.PascalName}}Hook(logger.NewLogger(false))
+	if hook == nil {
+		t.Fatal("expected hook instance")
+	}
+	if err := hook.OnShutdown(context.Background()); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}

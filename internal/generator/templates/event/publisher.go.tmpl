@@ -1,0 +1,30 @@
+package events
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+// {{.PascalName}}Publisher publishes {{.KebabName}} domain events.
+type {{.PascalName}}Publisher struct {
+	pub core.Publisher
+	log *logger.Logger
+}
+
+func New{{.PascalName}}Publisher(pub core.Publisher, log *logger.Logger) *{{.PascalName}}Publisher {
+	return &{{.PascalName}}Publisher{pub: pub, log: log}
+}
+
+// Publish{{.PascalName}}Created publishes a "{{.KebabName}}.created" event.
+func (p *{{.PascalName}}Publisher) Publish{{.PascalName}}Created(ctx context.Context, payload []byte) error {
+	if p.log != nil {
+		p.log.Info("publishing {{.KebabName}} created event")
+	}
+	return p.pub.Publish(ctx, core.Message{
+		Topic:   "{{.KebabName}}.created",
+		Key:     []byte("{{.KebabName}}"),
+		Payload: payload,
+	})
+}
