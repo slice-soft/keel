@@ -6,6 +6,7 @@ const coreModulePath = "github.com/slice-soft/ss-keel-core"
 type Data struct {
 	AppName            string // mi-app
 	ModuleName         string // github.com/user/mi-app
+	TemplateMode       string // new | init
 	UseAir             bool   // usa Air en script dev
 	UseAirConfig       bool   // usa .air.toml en script dev
 	UseEnv             bool   // incluye soporte para .env
@@ -36,11 +37,23 @@ func NewProjectData(appName, moduleName string, useAir, useAirConfig, useEnv, us
 	d := NewData(appName)
 	d.AppName = appName
 	d.ModuleName = moduleName
+	d.TemplateMode = "new"
 	d.UseAir = useAir
 	d.UseAirConfig = useAirConfig
 	d.UseEnv = useEnv
 	d.UseStarterModule = useStarterModule
 	d.UseFolderStructure = useFolderStructure
 	d.CoreVersion, _ = getLatestModuleVersion(coreModulePath)
+	return d
+}
+
+// NewInitData construye el Data para keel init.
+func NewInitData(appName string, useAir, airConfigExists bool) Data {
+	d := NewData(appName)
+	d.AppName = appName
+	d.TemplateMode = "init"
+	d.UseAir = useAir
+	d.UseAirConfig = airConfigExists
+	d.UseEnv = false
 	return d
 }

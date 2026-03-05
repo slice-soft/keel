@@ -1,6 +1,11 @@
 [app]
+{{- if eq .TemplateMode "init" }}
+name    = ""
+version = ""
+{{- else }}
 name    = "{{.AppName}}"
 version = "1.0.0"
+{{- end }}
 
 [scripts]
 {{- if .UseAir }}

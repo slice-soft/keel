@@ -84,4 +84,34 @@ func TestNewProjectDataSetsFlags(t *testing.T) {
 	if !data.UseStarterModule {
 		t.Fatalf("expected UseStarterModule to be true")
 	}
+	if data.TemplateMode != "new" {
+		t.Fatalf("expected TemplateMode to be new, got %q", data.TemplateMode)
+	}
+}
+
+func TestNewInitData(t *testing.T) {
+	data := NewInitData("my-backend", true, true)
+
+	if data.AppName != "my-backend" {
+		t.Fatalf("expected AppName to be my-backend, got %q", data.AppName)
+	}
+	if data.TemplateMode != "init" {
+		t.Fatalf("expected TemplateMode to be init, got %q", data.TemplateMode)
+	}
+	if !data.UseAir {
+		t.Fatalf("expected UseAir to be true")
+	}
+	if !data.UseAirConfig {
+		t.Fatalf("expected UseAirConfig to be true")
+	}
+	if data.UseEnv {
+		t.Fatalf("expected UseEnv to be false")
+	}
+}
+
+func TestNewInitDataWithoutAirConfig(t *testing.T) {
+	data := NewInitData("my-backend", true, false)
+	if data.UseAirConfig {
+		t.Fatalf("expected UseAirConfig to be false")
+	}
 }

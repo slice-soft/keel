@@ -139,3 +139,49 @@ func TestRenderReadmeTemplateByStarterFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderKeelTemplateForInitMode(t *testing.T) {
+	root := t.TempDir()
+	dest := filepath.Join(root, "keel.toml")
+
+	data := NewInitData("my-backend", true, false)
+
+	if err := RenderToFile("templates/project/keel.toml.tmpl", dest, data); err != nil {
+		t.Fatalf("RenderToFile returned error: %v", err)
+	}
+
+	content, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("failed to read generated keel.toml: %v", err)
+	}
+	text := string(content)
+
+	if !strings.Contains(text, "name    = \"\"") || !strings.Contains(text, "version = \"\"") {
+		t.Fatalf("expected init keel.toml to keep [app] section with empty values, got: %s", text)
+	}
+
+	if !strings.Contains(text, "dev   = \"air\"") {
+		t.Fatalf("expected init keel.toml to include air script, got: %s", text)
+	}
+}
+
+func TestRenderKeelTemplateForInitModeWithExistingAirConfig(t *testing.T) {
+	root := t.TempDir()
+	dest := filepath.Join(root, "keel.toml")
+
+	data := NewInitData("my-backend", true, true)
+
+	if err := RenderToFile("templates/project/keel.toml.tmpl", dest, data); err != nil {
+		t.Fatalf("RenderToFile returned error: %v", err)
+	}
+
+	content, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("failed to read generated keel.toml: %v", err)
+	}
+	text := string(content)
+
+	if !strings.Contains(text, "dev   = \"air -c .air.toml\"") {
+		t.Fatalf("expected init keel.toml to include air config script, got: %s", text)
+	}
+}
