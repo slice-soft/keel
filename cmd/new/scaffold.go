@@ -55,6 +55,10 @@ func buildProjectFiles(appName string, includeAirConfig, useEnv, includeStarterM
 			TemplatePath: "templates/project/env.tmpl",
 			Destination:  filepath.Join(appName, ".env"),
 		})
+		files = append(files, ProjectFile{
+			TemplatePath: "templates/project/env.tmpl",
+			Destination:  filepath.Join(appName, ".env.example"),
+		})
 	}
 
 	if includeAirConfig {
