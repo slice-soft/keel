@@ -8,6 +8,8 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/slice-soft/keel/cmd.version={{.Version}}
+      - -X github.com/slice-soft/keel/cmd.commit={{.Commit}}
+      - -X github.com/slice-soft/keel/cmd.buildDate={{.Date}}
     goos:
       - linux
       - darwin

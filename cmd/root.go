@@ -12,17 +12,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version is injected at build time via ldflags:
+// Build metadata is injected at build time via ldflags.
 //
-//	go build -ldflags "-X github.com/slice-soft/keel/cmd.version=$(jq -r '."."' .release-please-manifest.json)"
-//
-// Defaults to "dev" for local development.
-var version = "dev"
+// Defaults are used for local development.
+var (
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
+)
 
 var rootCmd = &cobra.Command{
-	Use:     "keel",
-	Version: version,
-	Short:   "⚓ Keel CLI — Opinionated Go framework by slice-soft",
+	Use:   "keel",
+	Short: "⚓ Keel CLI — Opinionated Go framework by slice-soft",
 	Long: `
   ⚓  K E E L  C L I
   ────────────────────────────────
@@ -57,8 +58,15 @@ func Execute() {
 }
 
 func init() {
+	syncRootVersionOutput()
 	rootCmd.AddCommand(new.NewCommand())
 	rootCmd.AddCommand(initcmd.NewCommand())
 	rootCmd.AddCommand(completion.NewCommand(rootCmd))
 	rootCmd.AddCommand(run.NewCommand())
+	rootCmd.AddCommand(newVersionCommand())
+}
+
+func syncRootVersionOutput() {
+	rootCmd.Version = renderVersionOutput(version, commit, buildDate)
+	rootCmd.SetVersionTemplate("{{.Version}}")
 }
