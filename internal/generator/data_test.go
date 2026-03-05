@@ -62,3 +62,26 @@ func TestNewData(t *testing.T) {
 		})
 	}
 }
+
+func TestNewProjectDataSetsFlags(t *testing.T) {
+	data := NewProjectData("my-backend", "github.com/slice-soft/my-backend", true, false, true, true, false)
+
+	if data.AppName != "my-backend" {
+		t.Fatalf("expected AppName to be my-backend, got %q", data.AppName)
+	}
+	if data.ModuleName != "github.com/slice-soft/my-backend" {
+		t.Fatalf("unexpected ModuleName: %q", data.ModuleName)
+	}
+	if !data.UseAir {
+		t.Fatalf("expected UseAir to be true")
+	}
+	if data.UseAirConfig {
+		t.Fatalf("expected UseAirConfig to be false")
+	}
+	if !data.UseEnv {
+		t.Fatalf("expected UseEnv to be true")
+	}
+	if !data.UseStarterModule {
+		t.Fatalf("expected UseStarterModule to be true")
+	}
+}
