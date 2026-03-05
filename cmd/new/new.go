@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -14,6 +15,7 @@ import (
 
 var withoutStarterModule bool
 var withFolderStructure bool
+var yesFlag bool
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -24,18 +26,28 @@ func NewCommand() *cobra.Command {
 		RunE:    runNew,
 	}
 
-	cmd.Flags().BoolVar(
+	cmd.Flags().BoolVarP(
 		&withoutStarterModule,
 		"without-starter-module",
+		"s",
 		false,
 		"Skip creating the default 'starter' module (for advanced users)",
 	)
 
-	cmd.Flags().BoolVar(
+	cmd.Flags().BoolVarP(
 		&withFolderStructure,
 		"with-folder-structure",
+		"f",
 		false,
 		"Use a more opinionated folder structure with separate directories for middleware, guards, scheduler, checkers, events, and hooks (instead of a flat 'internal' directory)",
+	)
+
+	cmd.Flags().BoolVarP(
+		&yesFlag,
+		"yes",
+		"y",
+		false,
+		"Skip interactive prompts and use defaults",
 	)
 	return cmd
 }
@@ -88,6 +100,10 @@ func collectProjectSetup(args []string) (projectSetup, error) {
 		return projectSetup{}, err
 	}
 
+	if yesFlag {
+		return collectProjectSetupWithDefaults(initialAppName)
+	}
+
 	moduleName, err := promptModulePath(initialAppName)
 	if err != nil {
 		return projectSetup{}, err
@@ -130,6 +146,36 @@ func collectProjectSetup(args []string) (projectSetup, error) {
 		useEnv:               useEnv,
 		initGit:              initGit,
 		installDeps:          installDeps,
+		withoutStarterModule: withoutStarterModule,
+		withFolderStructure:  withFolderStructure,
+	}, nil
+}
+
+func collectProjectSetupWithDefaults(appName string) (projectSetup, error) {
+	if _, err := os.Stat(appName); err == nil {
+		return projectSetup{}, fmt.Errorf("directory '%s' already exists", appName)
+	}
+
+	moduleName := defaultModulePath(appName)
+	useAir := true
+	includeAirConfig := true
+
+	if !airInstalled() {
+		fmt.Println("  ⚠  Air is not installed on your PATH.")
+		fmt.Println("  Installing Air with: go install github.com/air-verse/air@latest")
+		if err := installAirBinary(); err != nil {
+			fmt.Printf("  ⚠  failed to install Air: %v\n", err)
+		}
+	}
+
+	return projectSetup{
+		appName:              appName,
+		moduleName:           moduleName,
+		useAir:               useAir,
+		includeAirConfig:     includeAirConfig,
+		useEnv:               true,
+		initGit:              true,
+		installDeps:          true,
 		withoutStarterModule: withoutStarterModule,
 		withFolderStructure:  withFolderStructure,
 	}, nil
@@ -246,6 +292,10 @@ func resolveProjectName(args []string) (string, error) {
 			return "", err
 		}
 		return strings.TrimSpace(args[0]), nil
+	}
+
+	if yesFlag {
+		return "", fmt.Errorf("project name is required when using --yes/-y")
 	}
 
 	appName := ""
@@ -510,6 +560,67 @@ func installAirBinary() error {
 	installCmd.Stdout = os.Stdout
 	installCmd.Stderr = os.Stderr
 	return installCmd.Run()
+}
+
+func defaultModulePath(appName string) string {
+	owner := detectGitHubOwner()
+	return fmt.Sprintf("github.com/%s/%s", owner, appName)
+}
+
+func detectGitHubOwner() string {
+	githubUser := firstGitConfigValue("github.user")
+	userEmail := firstGitConfigValue("user.email")
+	userName := firstGitConfigValue("user.name")
+
+	return inferGitHubOwner(githubUser, userEmail, userName)
+}
+
+func firstGitConfigValue(key string) string {
+	cmds := [][]string{
+		{"config", "--get", key},
+		{"config", "--global", "--get", key},
+	}
+	for _, args := range cmds {
+		out, err := exec.Command("git", args...).Output()
+		if err != nil {
+			continue
+		}
+		val := strings.TrimSpace(string(out))
+		if val != "" {
+			return val
+		}
+	}
+	return ""
+}
+
+func inferGitHubOwner(githubUser, userEmail, userName string) string {
+	if owner := sanitizeGitHubOwner(githubUser); owner != "" {
+		return owner
+	}
+
+	if at := strings.Index(userEmail, "@"); at > 0 {
+		if owner := sanitizeGitHubOwner(userEmail[:at]); owner != "" {
+			return owner
+		}
+	}
+
+	if owner := sanitizeGitHubOwner(userName); owner != "" {
+		return owner
+	}
+
+	return "my-github-user"
+}
+
+var nonGitHubOwnerChars = regexp.MustCompile(`[^a-z0-9-]+`)
+var repeatedHyphen = regexp.MustCompile(`-+`)
+
+func sanitizeGitHubOwner(value string) string {
+	owner := strings.ToLower(strings.TrimSpace(value))
+	owner = strings.ReplaceAll(owner, "_", "-")
+	owner = nonGitHubOwnerChars.ReplaceAllString(owner, "-")
+	owner = repeatedHyphen.ReplaceAllString(owner, "-")
+	owner = strings.Trim(owner, "-")
+	return owner
 }
 
 func buildProjectFiles(appName string, includeAirConfig, useEnv, includeStarterModule bool) []projectFile {
