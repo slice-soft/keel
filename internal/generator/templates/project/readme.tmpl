@@ -1,23 +1,23 @@
 # {{.AppName}}
 
-Proyecto generado con **Keel CLI**.
+Project generated with **Keel CLI**.
 
-Documentación oficial:
+Official documentation:
 - https://docs.keel-go.dev
 
-## Inicio rápido
+## Quick Start
 
 ```bash
 go mod tidy
 keel run dev
 ```
 
-## Estructura del proyecto
+## Project Structure
 
 {{- if .UseStarterModule }}
-El proyecto incluye un módulo starter listo para correr (`GET /hello`):
+The project includes a ready-to-run starter module (`GET /hello`):
 {{- else }}
-El proyecto se crea sin módulo starter. Puedes crear uno con:
+The project is created without a starter module. You can create one with:
 ```bash
 keel g module users
 ```
@@ -33,7 +33,7 @@ keel g module users
 │           ├── service.go
 │           └── dto.go
 {{- else }}
-│       └── (tus-modulos-aqui)
+│       └── (your-modules-here)
 {{- end }}
 {{- if .UseFolderStructure }}
 │   ├── middleware/
@@ -56,23 +56,23 @@ keel g module users
 
 {{- if .UseFolderStructure }}
 
-## Estructura recomendada
+## Recommended Structure
 
-- `internal/modules/`: módulos de dominio (users, orders, payments, etc.)
-- `internal/middleware/`: middlewares HTTP
-- `internal/guards/`: guards de acceso
+- `internal/modules/`: domain modules (users, orders, payments, etc.)
+- `internal/middleware/`: HTTP middlewares
+- `internal/guards/`: access guards
 - `internal/events/`: publishers/subscribers
 - `internal/checkers/`: health checks
-- `internal/scheduler/`: jobs y schedulers
-- `internal/hooks/`: hooks de apagado
+- `internal/scheduler/`: jobs and schedulers
+- `internal/hooks/`: shutdown hooks
 
 {{- else }}
 
-## Estructura recomendada
+## Recommended Structure
 
-- `internal/modules/`: módulos de dominio (users, orders, payments, etc.)
+- `internal/modules/`: domain modules (users, orders, payments, etc.)
 
-Puedes agregar manualmente carpetas como:
+You can add folders manually as needed:
 
 - `middleware`
 - `guards`
@@ -80,7 +80,5 @@ Puedes agregar manualmente carpetas como:
 - `events`
 - `checkers`
 - `hooks`
-
-si tu proyecto las necesita.
 
 {{- end }}

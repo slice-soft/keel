@@ -16,7 +16,7 @@ func main() {
 	{{- if .UseEnv }}
 	err := godotenv.Load()
 	if err != nil {
-		log.Printf("No se pudo cargar el archivo .env: %v", err)
+		log.Printf("Could not load .env file: %v", err)
 	}
 	{{- end }}
 	app := core.New(core.KConfig{
@@ -29,7 +29,7 @@ func main() {
 		},
 	})
 
-	// Registra tus módulos aquí:
+	// Register your modules here:
 	{{- if .UseStarterModule }}
 	app.Use(&starter.Module{})
 	{{- else }}

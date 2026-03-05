@@ -93,9 +93,9 @@ func collectProjectSetupWithDefaults(appName string) (projectSetup, error) {
 }
 
 func printAutomaticModulePathWarning() {
-	fmt.Println("  ⚠  Se creó el proyecto en modo automático.")
-	fmt.Println("  ⚠  Debes revisar en go.mod que el module path sea el correcto (dominio y usuario, si aplica).")
-	fmt.Println("  ⚠  Ajusta ese valor de forma consistente a nivel general del proyecto.")
+	fmt.Println("  ⚠  Project was created in automatic mode.")
+	fmt.Println("  ⚠  Review go.mod and ensure the module path is correct (domain and username, if applicable).")
+	fmt.Println("  ⚠  Apply this change consistently across the entire project.")
 }
 
 func projectNameFromModule(moduleName string) (string, error) {

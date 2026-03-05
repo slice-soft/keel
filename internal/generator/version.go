@@ -11,11 +11,11 @@ func getLatestModuleVersion(module string) (string, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error obteniendo última versión de %s: %w", module, err)
+		return "", fmt.Errorf("error getting latest version for %s: %w", module, err)
 	}
 
 	version := strings.TrimSpace(string(output))
-	fmt.Printf("  ✓ Última versión: %s\n", version)
+	fmt.Printf("  ✓ Latest version: %s\n", version)
 
 	return version, nil
 }

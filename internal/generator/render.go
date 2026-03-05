@@ -11,16 +11,16 @@ import (
 //go:embed templates
 var templatesFS embed.FS
 
-// RenderToFile renderiza un template y lo escribe en destPath.
+// RenderToFile renders a template and writes it to destPath.
 func RenderToFile(tmplPath, destPath string, data Data) error {
 	content, err := templatesFS.ReadFile(tmplPath)
 	if err != nil {
-		return fmt.Errorf("template no encontrado: %s", tmplPath)
+		return fmt.Errorf("template not found: %s", tmplPath)
 	}
 
 	tmpl, err := template.New("").Parse(string(content))
 	if err != nil {
-		return fmt.Errorf("error parseando template: %w", err)
+		return fmt.Errorf("error parsing template: %w", err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
@@ -29,14 +29,14 @@ func RenderToFile(tmplPath, destPath string, data Data) error {
 
 	file, err := os.Create(destPath)
 	if err != nil {
-		return fmt.Errorf("error creando archivo %s: %w", destPath, err)
+		return fmt.Errorf("error creating file %s: %w", destPath, err)
 	}
 	defer file.Close()
 
 	return tmpl.Execute(file, data)
 }
 
-// FileExists retorna true si el archivo ya existe.
+// FileExists returns true when the file already exists.
 func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil

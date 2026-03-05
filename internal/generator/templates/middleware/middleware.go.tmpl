@@ -4,12 +4,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// {{.PascalName}} es un middleware de propósito general.
+// {{.PascalName}} is a general-purpose middleware.
 func {{.PascalName}}() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// lógica antes del handler
+		// Logic before the next handler.
 		err := c.Next()
-		// lógica después del handler
+		// Logic after the next handler.
 		return err
 	}
 }

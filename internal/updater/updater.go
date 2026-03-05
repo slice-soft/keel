@@ -70,7 +70,7 @@ func Upgrade(currentVersion string) error {
 
 	release, err := fetchLatestRelease()
 	if err != nil {
-		return fmt.Errorf("error consultando GitHub: %w", err)
+		return fmt.Errorf("error querying GitHub: %w", err)
 	}
 
 	if !isNewer(release.TagName, currentVersion) {
@@ -97,7 +97,7 @@ func Upgrade(currentVersion string) error {
 
 	tmpFile, err := downloadBinary(downloadURL)
 	if err != nil {
-		return fmt.Errorf("error descargando binario: %w", err)
+		return fmt.Errorf("error downloading binary: %w", err)
 	}
 	defer os.Remove(tmpFile)
 

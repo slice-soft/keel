@@ -2,16 +2,16 @@ package generator
 
 const coreModulePath = "github.com/slice-soft/ss-keel-core"
 
-// Data contiene las variables disponibles en todos los templates.
+// Data contains the variables available across all templates.
 type Data struct {
-	AppName            string // mi-app
-	ModuleName         string // github.com/user/mi-app
+	AppName            string // my-app
+	ModuleName         string // github.com/user/my-app
 	TemplateMode       string // new | init
-	UseAir             bool   // usa Air en script dev
-	UseAirConfig       bool   // usa .air.toml en script dev
-	UseEnv             bool   // incluye soporte para .env
-	UseStarterModule   bool   // crea módulo starter "hola"
-	UseFolderStructure bool   // crea estructura de carpetas con middleware, guards, scheduler, checkers, events y hooks
+	UseAir             bool   // use Air in the dev script
+	UseAirConfig       bool   // use .air.toml in the dev script
+	UseEnv             bool   // include .env support
+	UseStarterModule   bool   // generate the default starter module
+	UseFolderStructure bool   // create an opinionated folder structure
 	PackageName        string // users
 	PascalName         string // Users
 	CamelName          string // users
@@ -20,7 +20,7 @@ type Data struct {
 	CoreVersion        string // github.com/slice-soft/ss-keel-core v1.2.3
 }
 
-// NewData construye el Data a partir del nombre en cualquier formato.
+// NewData builds Data from a name in any supported format.
 func NewData(name string) Data {
 	pascal := toPascal(name)
 	return Data{
@@ -32,7 +32,7 @@ func NewData(name string) Data {
 	}
 }
 
-// NewProjectData construye el Data para un proyecto nuevo.
+// NewProjectData builds Data for the `keel new` command.
 func NewProjectData(appName, moduleName string, useAir, useAirConfig, useEnv, useStarterModule, useFolderStructure bool) Data {
 	d := NewData(appName)
 	d.AppName = appName
@@ -47,7 +47,7 @@ func NewProjectData(appName, moduleName string, useAir, useAirConfig, useEnv, us
 	return d
 }
 
-// NewInitData construye el Data para keel init.
+// NewInitData builds Data for the `keel init` command.
 func NewInitData(appName string, useAir, airConfigExists bool) Data {
 	d := NewData(appName)
 	d.AppName = appName
