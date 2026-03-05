@@ -5,6 +5,9 @@ import (
 	{{- if .UseEnv }}
 	"github.com/joho/godotenv"
 	{{- end }}
+	{{- if .UseStarterModule }}
+	"{{.ModuleName}}/internal/modules/starter"
+	{{- end }}
 	"github.com/slice-soft/ss-keel-core/config"
 	"github.com/slice-soft/ss-keel-core/core"
 )
@@ -27,7 +30,11 @@ func main() {
 	})
 
 	// Registra tus módulos aquí:
+	{{- if .UseStarterModule }}
+	app.Use(&starter.Module{})
+	{{- else }}
 	// app.Use(&users.Module{})
+	{{- end }}
 
 	log.Fatal(app.Listen())
 }
