@@ -1,0 +1,14 @@
+package hooks
+
+import "context"
+
+type {{.PascalName}}Hook struct{}
+
+func New{{.PascalName}}Hook() *{{.PascalName}}Hook {
+	return &{{.PascalName}}Hook{}
+}
+
+func (h *{{.PascalName}}Hook) OnShutdown(ctx context.Context) error {
+	_ = ctx
+	return nil
+}

@@ -1,0 +1,21 @@
+package {{.PackageName}}
+
+import "github.com/slice-soft/ss-keel-core/core"
+
+type {{.PascalName}}Controller struct{}
+
+func New{{.PascalName}}Controller() *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{}
+}
+
+func (c *{{.PascalName}}Controller) Routes() []core.Route {
+	return []core.Route{
+		core.GET("/{{.KebabName}}", c.Handle).
+			Tag("{{.KebabName}}").
+			Describe("Handle {{.KebabName}} endpoint"),
+	}
+}
+
+func (c *{{.PascalName}}Controller) Handle(ctx *core.Ctx) error {
+	return ctx.OK(map[string]string{"component": "{{.KebabName}}"})
+}

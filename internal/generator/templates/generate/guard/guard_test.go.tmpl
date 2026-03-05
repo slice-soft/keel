@@ -1,0 +1,13 @@
+package guards
+
+import "testing"
+
+func Test{{.PascalName}}Guard(t *testing.T) {
+	g := New{{.PascalName}}Guard()
+	if g == nil {
+		t.Fatal("expected guard instance")
+	}
+	if g.Middleware() == nil {
+		t.Fatal("expected middleware handler")
+	}
+}

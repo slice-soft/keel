@@ -1,0 +1,13 @@
+package {{.PackageName}}
+
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+func TestModuleRegister(t *testing.T) {
+	app := core.New(core.KConfig{Port: 7331, ServiceName: "test", Env: "test"})
+	m := &Module{}
+	m.Register(app)
+}

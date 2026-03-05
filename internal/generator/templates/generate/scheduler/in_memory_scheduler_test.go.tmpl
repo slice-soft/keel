@@ -1,0 +1,23 @@
+package scheduler
+
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+func TestInMemoryScheduler(t *testing.T) {
+	s := NewInMemoryScheduler()
+	if s == nil {
+		t.Fatal("expected scheduler instance")
+	}
+
+	if err := s.Add(core.Job{Name: "demo"}); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+
+	jobs := s.Jobs()
+	if len(jobs) != 1 || jobs[0] != "demo" {
+		t.Fatalf("unexpected jobs: %#v", jobs)
+	}
+}

@@ -1,0 +1,18 @@
+package scheduler
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+var {{.PascalName}}Job = core.Job{
+	Name:     "{{.KebabName}}",
+	Schedule: "* * * * *",
+	Handler:  handle{{.PascalName}},
+}
+
+func handle{{.PascalName}}(ctx context.Context) error {
+	_ = ctx
+	return nil
+}

@@ -1,0 +1,14 @@
+package {{.PackageName}}
+
+import "context"
+
+type {{.PascalName}}Service struct{}
+
+func New{{.PascalName}}Service() *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{}
+}
+
+func (s *{{.PascalName}}Service) Execute(ctx context.Context) error {
+	_ = ctx
+	return nil
+}

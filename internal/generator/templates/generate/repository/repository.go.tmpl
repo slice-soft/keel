@@ -1,0 +1,49 @@
+package {{.PackageName}}
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+type {{.PascalName}}Entity struct {
+	ID string `json:"id"`
+}
+
+type {{.PascalName}}Repository struct{}
+
+var _ core.Repository[{{.PascalName}}Entity, string] = (*{{.PascalName}}Repository)(nil)
+
+func New{{.PascalName}}Repository() *{{.PascalName}}Repository {
+	return &{{.PascalName}}Repository{}
+}
+
+func (r *{{.PascalName}}Repository) FindByID(ctx context.Context, id string) (*{{.PascalName}}Entity, error) {
+	_ = ctx
+	return &{{.PascalName}}Entity{ID: id}, nil
+}
+
+func (r *{{.PascalName}}Repository) FindAll(ctx context.Context, q core.PageQuery) (core.Page[{{.PascalName}}Entity], error) {
+	_ = ctx
+	items := []{{.PascalName}}Entity{}
+	return core.NewPage(items, 0, q.Page, q.Limit), nil
+}
+
+func (r *{{.PascalName}}Repository) Create(ctx context.Context, entity *{{.PascalName}}Entity) error {
+	_ = ctx
+	_ = entity
+	return nil
+}
+
+func (r *{{.PascalName}}Repository) Update(ctx context.Context, id string, entity *{{.PascalName}}Entity) error {
+	_ = ctx
+	_ = id
+	_ = entity
+	return nil
+}
+
+func (r *{{.PascalName}}Repository) Delete(ctx context.Context, id string) error {
+	_ = ctx
+	_ = id
+	return nil
+}

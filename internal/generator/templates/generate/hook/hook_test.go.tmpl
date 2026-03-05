@@ -1,0 +1,16 @@
+package hooks
+
+import (
+	"context"
+	"testing"
+)
+
+func Test{{.PascalName}}Hook(t *testing.T) {
+	hook := New{{.PascalName}}Hook()
+	if hook == nil {
+		t.Fatal("expected hook instance")
+	}
+	if err := hook.OnShutdown(context.Background()); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}

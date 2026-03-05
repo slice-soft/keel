@@ -1,0 +1,23 @@
+package events
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+type {{.PascalName}}Publisher struct {
+	pub core.Publisher
+}
+
+func New{{.PascalName}}Publisher(pub core.Publisher) *{{.PascalName}}Publisher {
+	return &{{.PascalName}}Publisher{pub: pub}
+}
+
+func (p *{{.PascalName}}Publisher) Publish{{.PascalName}}Created(ctx context.Context, payload []byte) error {
+	return p.pub.Publish(ctx, core.Message{
+		Topic:   "{{.KebabName}}.created",
+		Key:     []byte("{{.KebabName}}"),
+		Payload: payload,
+	})
+}

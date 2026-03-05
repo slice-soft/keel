@@ -1,0 +1,36 @@
+package scheduler
+
+import (
+	"context"
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+type {{.CamelName}}SchedulerStub struct {
+	added int
+}
+
+func (s *{{.CamelName}}SchedulerStub) Add(job core.Job) error {
+	s.added++
+	if job.Name == "" {
+		return context.Canceled
+	}
+	return nil
+}
+
+func (s *{{.CamelName}}SchedulerStub) Start() {}
+
+func (s *{{.CamelName}}SchedulerStub) Stop(ctx context.Context) {
+	_ = ctx
+}
+
+func TestRegister{{.PascalName}}Jobs(t *testing.T) {
+	s := &{{.CamelName}}SchedulerStub{}
+	if err := Register{{.PascalName}}Jobs(s); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if s.added != 1 {
+		t.Fatalf("expected one job registration, got %d", s.added)
+	}
+}

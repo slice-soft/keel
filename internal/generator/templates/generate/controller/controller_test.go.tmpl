@@ -1,0 +1,14 @@
+package {{.PackageName}}
+
+import "testing"
+
+func Test{{.PascalName}}Controller(t *testing.T) {
+	ctrl := New{{.PascalName}}Controller()
+	if ctrl == nil {
+		t.Fatal("expected controller instance")
+	}
+
+	if len(ctrl.Routes()) == 0 {
+		t.Fatal("expected at least one route")
+	}
+}

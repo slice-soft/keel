@@ -1,0 +1,25 @@
+package events
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+type {{.PascalName}}Subscriber struct {
+	sub core.Subscriber
+}
+
+func New{{.PascalName}}Subscriber(sub core.Subscriber) *{{.PascalName}}Subscriber {
+	return &{{.PascalName}}Subscriber{sub: sub}
+}
+
+func (s *{{.PascalName}}Subscriber) Subscribe(ctx context.Context) error {
+	return s.sub.Subscribe(ctx, "{{.KebabName}}.created", s.on{{.PascalName}}Created)
+}
+
+func (s *{{.PascalName}}Subscriber) on{{.PascalName}}Created(ctx context.Context, msg core.Message) error {
+	_ = ctx
+	_ = msg
+	return nil
+}

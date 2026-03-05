@@ -1,0 +1,9 @@
+package middleware
+
+import "testing"
+
+func Test{{.PascalName}}Middleware(t *testing.T) {
+	if {{.PascalName}}() == nil {
+		t.Fatal("expected middleware handler")
+	}
+}

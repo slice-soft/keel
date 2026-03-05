@@ -1,0 +1,17 @@
+package {{.PackageName}}
+
+import (
+	"context"
+	"testing"
+)
+
+func Test{{.PascalName}}Service(t *testing.T) {
+	svc := New{{.PascalName}}Service()
+	if svc == nil {
+		t.Fatal("expected service instance")
+	}
+
+	if err := svc.Execute(context.Background()); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}

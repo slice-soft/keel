@@ -1,0 +1,20 @@
+package guards
+
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+type {{.PascalName}}Guard struct{}
+
+var _ core.Guard = (*{{.PascalName}}Guard)(nil)
+
+func New{{.PascalName}}Guard() *{{.PascalName}}Guard {
+	return &{{.PascalName}}Guard{}
+}
+
+func (g *{{.PascalName}}Guard) Middleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		return c.Next()
+	}
+}

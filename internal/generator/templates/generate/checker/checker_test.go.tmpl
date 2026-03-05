@@ -1,0 +1,16 @@
+package checkers
+
+import (
+	"context"
+	"testing"
+)
+
+func Test{{.PascalName}}Checker(t *testing.T) {
+	checker := New{{.PascalName}}Checker()
+	if checker.Name() != "{{.KebabName}}" {
+		t.Fatalf("unexpected checker name: %s", checker.Name())
+	}
+	if err := checker.Check(context.Background()); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
