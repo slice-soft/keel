@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -24,6 +25,13 @@ func TestEnsureKeelConfigExists(t *testing.T) {
 		err := ensureKeelConfigExists(filepath.Join(t.TempDir(), "keel.toml"))
 		if err == nil {
 			t.Fatalf("expected error, got nil")
+		}
+	})
+
+	t.Run("invalid path", func(t *testing.T) {
+		err := ensureKeelConfigExists("bad\x00path")
+		if err == nil || !strings.Contains(err.Error(), "failed to access") {
+			t.Fatalf("expected access error for invalid path, got %v", err)
 		}
 	})
 }
@@ -58,6 +66,13 @@ func TestLoadScriptsFromConfig(t *testing.T) {
 			t.Fatalf("expected error, got nil")
 		}
 	})
+
+	t.Run("invalid config path", func(t *testing.T) {
+		_, err := loadScriptsFromConfig("bad\x00path")
+		if err == nil || !strings.Contains(err.Error(), "failed to read keel.toml") {
+			t.Fatalf("expected read config error, got %v", err)
+		}
+	})
 }
 
 func TestFindScriptCommand(t *testing.T) {
@@ -75,6 +90,11 @@ func TestFindScriptCommand(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for missing script")
 	}
+
+	_, err = findScriptCommand(map[string]string{"empty": ""}, "empty")
+	if err == nil {
+		t.Fatalf("expected error for empty script command")
+	}
 }
 
 func TestShellCommand(t *testing.T) {
@@ -89,4 +109,96 @@ func TestShellCommand(t *testing.T) {
 	if cmd.Path == "" || len(cmd.Args) < 3 || cmd.Args[1] != "-c" {
 		t.Fatalf("unexpected unix shell command: %#v", cmd.Args)
 	}
+}
+
+func TestNewCommand(t *testing.T) {
+	cmd := NewCommand()
+
+	if cmd.Use != "run [script]" {
+		t.Fatalf("unexpected use: %q", cmd.Use)
+	}
+	if cmd.Short == "" {
+		t.Fatalf("expected short description to be set")
+	}
+	if cmd.RunE == nil {
+		t.Fatalf("expected RunE handler to be configured")
+	}
+}
+
+func TestRunScript(t *testing.T) {
+	t.Run("runs configured script", func(t *testing.T) {
+		dir := t.TempDir()
+		oldWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get wd: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWD) }()
+
+		if err := os.Chdir(dir); err != nil {
+			t.Fatalf("failed to change directory: %v", err)
+		}
+
+		script := "printf ok > result.txt"
+		if runtime.GOOS == "windows" {
+			script = "echo ok > result.txt"
+		}
+
+		config := "[scripts]\nwrite=\"" + script + "\"\n"
+		if err := os.WriteFile("keel.toml", []byte(config), 0644); err != nil {
+			t.Fatalf("failed to create keel.toml: %v", err)
+		}
+
+		if err := runScript(nil, []string{"write"}); err != nil {
+			t.Fatalf("runScript returned error: %v", err)
+		}
+
+		output, err := os.ReadFile("result.txt")
+		if err != nil {
+			t.Fatalf("expected script side effect file: %v", err)
+		}
+		if !strings.Contains(string(output), "ok") {
+			t.Fatalf("unexpected script output content: %q", string(output))
+		}
+	})
+
+	t.Run("fails when keel.toml does not exist", func(t *testing.T) {
+		dir := t.TempDir()
+		oldWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get wd: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWD) }()
+
+		if err := os.Chdir(dir); err != nil {
+			t.Fatalf("failed to change directory: %v", err)
+		}
+
+		err = runScript(nil, []string{"dev"})
+		if err == nil || !strings.Contains(err.Error(), "keel.toml not found") {
+			t.Fatalf("expected missing keel.toml error, got %v", err)
+		}
+	})
+
+	t.Run("fails when requested script is missing", func(t *testing.T) {
+		dir := t.TempDir()
+		oldWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get wd: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWD) }()
+
+		if err := os.Chdir(dir); err != nil {
+			t.Fatalf("failed to change directory: %v", err)
+		}
+
+		config := "[scripts]\ndev=\"echo hello\"\n"
+		if err := os.WriteFile("keel.toml", []byte(config), 0644); err != nil {
+			t.Fatalf("failed to create keel.toml: %v", err)
+		}
+
+		err = runScript(nil, []string{"build"})
+		if err == nil || !strings.Contains(err.Error(), "does not exist") {
+			t.Fatalf("expected missing script error, got %v", err)
+		}
+	})
 }

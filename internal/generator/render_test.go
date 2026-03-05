@@ -185,3 +185,44 @@ func TestRenderKeelTemplateForInitModeWithExistingAirConfig(t *testing.T) {
 		t.Fatalf("expected init keel.toml to include air config script, got: %s", text)
 	}
 }
+
+func TestRenderToFileGoFormattingAndWriteErrors(t *testing.T) {
+	t.Run("formats generated go file", func(t *testing.T) {
+		root := t.TempDir()
+		dest := filepath.Join(root, "service.go")
+		data := NewData("users")
+
+		if err := RenderToFile("templates/module/service.go.tmpl", dest, data); err != nil {
+			t.Fatalf("RenderToFile returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(dest)
+		if err != nil {
+			t.Fatalf("failed to read generated file: %v", err)
+		}
+		text := string(content)
+		if !strings.Contains(text, "package users") {
+			t.Fatalf("expected go output to contain package declaration, got: %s", text)
+		}
+	})
+
+	t.Run("returns error when destination path is invalid", func(t *testing.T) {
+		err := RenderToFile("templates/project/env.tmpl", "bad\x00path/.env", Data{AppName: "demo"})
+		if err == nil {
+			t.Fatalf("expected error for invalid destination path")
+		}
+	})
+
+	t.Run("returns error when destination is a directory", func(t *testing.T) {
+		root := t.TempDir()
+		dest := filepath.Join(root, "already-a-dir")
+		if err := os.MkdirAll(dest, 0755); err != nil {
+			t.Fatalf("failed to create destination directory: %v", err)
+		}
+
+		err := RenderToFile("templates/project/env.tmpl", dest, Data{AppName: "demo"})
+		if err == nil {
+			t.Fatalf("expected write error when destination is a directory")
+		}
+	})
+}

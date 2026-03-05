@@ -61,3 +61,9 @@ func TestNameConverters(t *testing.T) {
 		})
 	}
 }
+
+func TestToCamelEmpty(t *testing.T) {
+	if got := toCamel(""); got != "" {
+		t.Fatalf("expected empty camel case for empty input, got %q", got)
+	}
+}
