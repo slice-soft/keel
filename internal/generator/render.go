@@ -1,8 +1,10 @@
 package generator
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -27,13 +29,24 @@ func RenderToFile(tmplPath, destPath string, data Data) error {
 		return err
 	}
 
-	file, err := os.Create(destPath)
-	if err != nil {
-		return fmt.Errorf("error creating file %s: %w", destPath, err)
+	var rendered []byte
+	buffer := &bytes.Buffer{}
+	if err := tmpl.Execute(buffer, data); err != nil {
+		return err
 	}
-	defer file.Close()
+	rendered = buffer.Bytes()
 
-	return tmpl.Execute(file, data)
+	if filepath.Ext(destPath) == ".go" {
+		formatted, err := format.Source(rendered)
+		if err == nil {
+			rendered = formatted
+		}
+	}
+
+	if err := os.WriteFile(destPath, rendered, 0644); err != nil {
+		return fmt.Errorf("error writing file %s: %w", destPath, err)
+	}
+	return nil
 }
 
 // FileExists returns true when the file already exists.
