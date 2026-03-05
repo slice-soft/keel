@@ -15,3 +15,12 @@ dev   = "go run ./cmd/main.go"
 build = "go build -o bin/{{.AppName}} ./cmd/main.go"
 test  = "go test ./..."
 lint  = "golangci-lint run"
+
+
+[features]
+{{- if .UseAir }}
+air = true
+{{- end }}
+{{- if .UseEnv }}
+env = true
+{{- end }}
