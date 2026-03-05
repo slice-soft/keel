@@ -89,3 +89,53 @@ func TestFileExists(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderReadmeTemplateByStarterFlag(t *testing.T) {
+	tests := []struct {
+		name             string
+		useStarterModule bool
+		wantContains     string
+	}{
+		{
+			name:             "with starter module",
+			useStarterModule: true,
+			wantContains:     "internal/modules/",
+		},
+		{
+			name:             "without starter module",
+			useStarterModule: false,
+			wantContains:     "keel g module users",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			dest := filepath.Join(root, "README.md")
+
+			data := Data{
+				AppName:          "my-backend",
+				UseStarterModule: tt.useStarterModule,
+				UseEnv:           true,
+				UseAirConfig:     true,
+			}
+
+			if err := RenderToFile("templates/project/readme.tmpl", dest, data); err != nil {
+				t.Fatalf("RenderToFile returned error: %v", err)
+			}
+
+			content, err := os.ReadFile(dest)
+			if err != nil {
+				t.Fatalf("failed to read generated README: %v", err)
+			}
+			text := string(content)
+
+			if !strings.Contains(text, "https://docs.keel-go.dev") {
+				t.Fatalf("expected README to include docs URL")
+			}
+			if !strings.Contains(text, tt.wantContains) {
+				t.Fatalf("expected README to include %q, got: %q", tt.wantContains, text)
+			}
+		})
+	}
+}
