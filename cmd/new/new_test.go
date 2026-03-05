@@ -238,66 +238,10 @@ func TestCreateProjectDirectories(t *testing.T) {
 	}
 }
 
-func TestInferGitHubOwner(t *testing.T) {
-	tests := []struct {
-		name       string
-		githubUser string
-		userEmail  string
-		userName   string
-		want       string
-	}{
-		{
-			name:       "prefers github user",
-			githubUser: "Slice-Soft",
-			userEmail:  "dev@example.com",
-			userName:   "Dev Team",
-			want:       "slice-soft",
-		},
-		{
-			name:      "falls back to email local part",
-			userEmail: "my.user+team@example.com",
-			userName:  "Dev Team",
-			want:      "my-user-team",
-		},
-		{
-			name:     "falls back to user name",
-			userName: "Slice Soft Backend",
-			want:     "slice-soft-backend",
-		},
-		{
-			name: "uses default when all values are invalid",
-			want: "my-github-user",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := inferGitHubOwner(tt.githubUser, tt.userEmail, tt.userName)
-			if got != tt.want {
-				t.Fatalf("expected %q, got %q", tt.want, got)
-			}
-		})
-	}
-}
-
-func TestSanitizeGitHubOwner(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{name: "trim lower", input: "  Slice-Soft  ", want: "slice-soft"},
-		{name: "replace invalid chars", input: "my.user+team", want: "my-user-team"},
-		{name: "collapse hyphens", input: "my---team__", want: "my-team"},
-		{name: "empty", input: "   ", want: ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := sanitizeGitHubOwner(tt.input)
-			if got != tt.want {
-				t.Fatalf("expected %q, got %q", tt.want, got)
-			}
-		})
+func TestDefaultModulePath(t *testing.T) {
+	got := defaultModulePath("my-backend")
+	want := "github.com/my-github-user/my-backend"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
 	}
 }
