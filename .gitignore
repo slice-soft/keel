@@ -23,6 +23,7 @@ dist/
 build/
 bin/
 keel
+examples/
 
 # IDE
 .idea/
