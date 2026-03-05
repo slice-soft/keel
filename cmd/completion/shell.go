@@ -8,6 +8,12 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
+var runCompletionPromptForm = func(form *huh.Form) error {
+	return form.Run()
+}
+
+var isInteractiveTerminalFn = isInteractiveTerminal
+
 var shellConfigCandidates = map[string][]string{
 	"zsh":  {".zshrc", ".zprofile"},
 	"bash": {".bashrc", ".bash_profile", ".profile"},
@@ -58,7 +64,7 @@ func resolveShell(homeDir string) (string, error) {
 		return options[0], nil
 	}
 
-	if !isInteractiveTerminal() && detected != "" {
+	if !isInteractiveTerminalFn() && detected != "" {
 		return detected, nil
 	}
 
@@ -91,14 +97,14 @@ func promptSelectShell(options []string) (string, error) {
 		huhOptions = append(huhOptions, huh.NewOption(strings.ToUpper(option), option))
 	}
 
-	err := huh.NewForm(
+	err := runCompletionPromptForm(huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("Multiple shells detected. Which shell should Keel configure?").
 				Options(huhOptions...).
 				Value(&selected),
 		),
-	).Run()
+	))
 	if err != nil {
 		return "", err
 	}
@@ -127,7 +133,7 @@ func resolveConfigFile(shell, homeDir string) (string, error) {
 	}
 
 	if len(existing) > 1 {
-		if !isInteractiveTerminal() {
+		if !isInteractiveTerminalFn() {
 			return existing[0], nil
 		}
 		return promptSelectConfigFile(shell, existing)
@@ -143,14 +149,14 @@ func promptSelectConfigFile(shell string, files []string) (string, error) {
 		huhOptions = append(huhOptions, huh.NewOption(file, file))
 	}
 
-	err := huh.NewForm(
+	err := runCompletionPromptForm(huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("Multiple " + strings.ToUpper(shell) + " config files found. Which one should be updated?").
 				Options(huhOptions...).
 				Value(&selected),
 		),
-	).Run()
+	))
 	if err != nil {
 		return "", err
 	}

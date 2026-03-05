@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var runInstallCommandFn = runInstall
+
 func NewCommand(root *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion",
@@ -44,7 +46,7 @@ func newInstallCommand(root *cobra.Command) *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runInstall(root)
+			return runInstallCommandFn(root)
 		},
 	}
 }

@@ -3,6 +3,7 @@ package completion
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,30 +11,51 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var userHomeDirFn = os.UserHomeDir
+var resolveShellFn = resolveShell
+var generateCompletionScriptFn = generateCompletionScript
+var writeCompletionScriptFn = writeCompletionScript
+var resolveConfigFileFn = resolveConfigFile
+var ensureSourceLineFn = ensureSourceLine
+var genZshCompletionFn = func(root *cobra.Command, out io.Writer) error { return root.GenZshCompletion(out) }
+var genBashCompletionFn = func(root *cobra.Command, out io.Writer) error {
+	return root.GenBashCompletionV2(out, true)
+}
+var genFishCompletionFn = func(root *cobra.Command, out io.Writer) error {
+	return root.GenFishCompletion(out, true)
+}
+var genPowerShellCompletionFn = func(root *cobra.Command, out io.Writer) error {
+	return root.GenPowerShellCompletionWithDesc(out)
+}
+var mkdirAllFn = os.MkdirAll
+var writeFileFn = os.WriteFile
+var readFileFn = os.ReadFile
+var openFileFn = os.OpenFile
+
 func runInstall(root *cobra.Command) error {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := userHomeDirFn()
 	if err != nil {
 		return fmt.Errorf("failed to resolve home directory: %w", err)
 	}
 
-	shell, err := resolveShell(homeDir)
+	shell, err := resolveShellFn(homeDir)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("  ✓ Detected shell: %s\n", shell)
 
-	script, err := generateCompletionScript(root, shell)
+	script, err := generateCompletionScriptFn(root, shell)
 	if err != nil {
 		return err
 	}
 
-	scriptPath, err := writeCompletionScript(homeDir, shell, script)
+	scriptPath, err := writeCompletionScriptFn(homeDir, shell, script)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("  ✓ Installed script: %s\n", scriptPath)
 
-	configPath, err := resolveConfigFile(shell, homeDir)
+	configPath, err := resolveConfigFileFn(shell, homeDir)
 	if err != nil {
 		return err
 	}
@@ -43,7 +65,7 @@ func runInstall(root *cobra.Command) error {
 		return nil
 	}
 
-	if err := ensureSourceLine(configPath, sourceLineForShell(shell, scriptPath)); err != nil {
+	if err := ensureSourceLineFn(configPath, sourceLineForShell(shell, scriptPath)); err != nil {
 		return err
 	}
 	fmt.Printf("  ✓ Updated shell config: %s\n", configPath)
@@ -56,19 +78,19 @@ func generateCompletionScript(root *cobra.Command, shell string) (string, error)
 
 	switch shell {
 	case "zsh":
-		if err := root.GenZshCompletion(&out); err != nil {
+		if err := genZshCompletionFn(root, &out); err != nil {
 			return "", fmt.Errorf("failed to generate zsh completion: %w", err)
 		}
 	case "bash":
-		if err := root.GenBashCompletionV2(&out, true); err != nil {
+		if err := genBashCompletionFn(root, &out); err != nil {
 			return "", fmt.Errorf("failed to generate bash completion: %w", err)
 		}
 	case "fish":
-		if err := root.GenFishCompletion(&out, true); err != nil {
+		if err := genFishCompletionFn(root, &out); err != nil {
 			return "", fmt.Errorf("failed to generate fish completion: %w", err)
 		}
 	case "powershell":
-		if err := root.GenPowerShellCompletionWithDesc(&out); err != nil {
+		if err := genPowerShellCompletionFn(root, &out); err != nil {
 			return "", fmt.Errorf("failed to generate powershell completion: %w", err)
 		}
 	default:
@@ -80,10 +102,10 @@ func generateCompletionScript(root *cobra.Command, shell string) (string, error)
 
 func writeCompletionScript(homeDir, shell, content string) (string, error) {
 	path := filepath.Join(homeDir, ".config", "keel", "completion", "keel."+shell)
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := mkdirAllFn(filepath.Dir(path), 0755); err != nil {
 		return "", fmt.Errorf("failed to create completion directory: %w", err)
 	}
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := writeFileFn(path, []byte(content), 0644); err != nil {
 		return "", fmt.Errorf("failed to write completion script: %w", err)
 	}
 	return path, nil
@@ -98,13 +120,13 @@ func sourceLineForShell(shell, scriptPath string) string {
 }
 
 func ensureSourceLine(configPath, sourceLine string) error {
-	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+	if err := mkdirAllFn(filepath.Dir(configPath), 0755); err != nil {
 		return fmt.Errorf("failed to ensure shell config directory: %w", err)
 	}
 
 	existing := ""
 	if fileExists(configPath) {
-		content, err := os.ReadFile(configPath)
+		content, err := readFileFn(configPath)
 		if err != nil {
 			return fmt.Errorf("failed to read shell config %s: %w", configPath, err)
 		}
@@ -114,7 +136,7 @@ func ensureSourceLine(configPath, sourceLine string) error {
 		}
 	}
 
-	f, err := os.OpenFile(configPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := openFileFn(configPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open shell config %s: %w", configPath, err)
 	}
