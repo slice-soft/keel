@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/slice-soft/keel/cmd/new"
+	"github.com/slice-soft/keel/cmd/run"
 	"github.com/slice-soft/keel/internal/updater"
 	"github.com/spf13/cobra"
 )
@@ -56,6 +57,6 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(new.NewCommand())
 	rootCmd.AddCommand(generateCmd)
-	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(run.NewCommand())
 	rootCmd.AddCommand(upgradeCmd)
 }
