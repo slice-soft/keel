@@ -1,9 +1,15 @@
 package middleware
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
-func {{.PascalName}}() fiber.Handler {
+func {{.PascalName}}(log *logger.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		if log != nil {
+			log.Debug("executing {{.KebabName}} middleware")
+		}
 		return c.Next()
 	}
 }

@@ -3,10 +3,12 @@ package {{.PackageName}}
 import (
 	"context"
 	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 func Test{{.PascalName}}Service(t *testing.T) {
-	svc := New{{.PascalName}}Service()
+	svc := New{{.PascalName}}Service(logger.NewLogger(false))
 	if svc == nil {
 		t.Fatal("expected service instance")
 	}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 type {{.CamelName}}PublisherStub struct {
@@ -44,7 +45,7 @@ func (s *{{.CamelName}}SubscriberStub) Close() error {
 
 func Test{{.PascalName}}EventComponents(t *testing.T) {
 	pubStub := &{{.CamelName}}PublisherStub{}
-	pub := New{{.PascalName}}Publisher(pubStub)
+	pub := New{{.PascalName}}Publisher(pubStub, logger.NewLogger(false))
 	if err := pub.Publish{{.PascalName}}Created(context.Background(), []byte("ok")); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -53,7 +54,7 @@ func Test{{.PascalName}}EventComponents(t *testing.T) {
 	}
 
 	subStub := &{{.CamelName}}SubscriberStub{}
-	sub := New{{.PascalName}}Subscriber(subStub)
+	sub := New{{.PascalName}}Subscriber(subStub, logger.NewLogger(false))
 	if err := sub.Subscribe(context.Background()); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}

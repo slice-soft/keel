@@ -1,23 +1,32 @@
 package {{.PackageName}}
 
-import "github.com/slice-soft/ss-keel-core/core"
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
-type Module struct{}
+type Module struct {
+	log *logger.Logger
+}
+
+func NewModule(log *logger.Logger) *Module {
+	return &Module{log: log}
+}
 
 func (m *Module) Register(app *core.App) {
 {{- if .Services }}
 {{- range .Services }}
-	_ = New{{.PascalName}}Service()
+	_ = New{{.PascalName}}Service(m.log)
 {{- end }}
 {{- end }}
 {{- if .Repositories }}
 {{- range .Repositories }}
-	_ = New{{.PascalName}}Repository()
+	_ = New{{.PascalName}}Repository(m.log)
 {{- end }}
 {{- end }}
 {{- if .Controllers }}
 {{- range .Controllers }}
-	{{.VarName}}Controller := New{{.PascalName}}Controller()
+	{{.VarName}}Controller := New{{.PascalName}}Controller(m.log)
 	app.RegisterController({{.VarName}}Controller)
 {{- end }}
 {{- end }}

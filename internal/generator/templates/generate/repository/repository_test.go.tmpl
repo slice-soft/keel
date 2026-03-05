@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 func Test{{.PascalName}}Repository(t *testing.T) {
-	repo := New{{.PascalName}}Repository()
+	repo := New{{.PascalName}}Repository(logger.NewLogger(false))
 	if repo == nil {
 		t.Fatal("expected repository instance")
 	}

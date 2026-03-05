@@ -1,7 +1,10 @@
 package scheduler
 
-import "github.com/slice-soft/ss-keel-core/core"
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
-func Register{{.PascalName}}Jobs(s core.Scheduler) error {
-	return s.Add({{.PascalName}}Job)
+func Register{{.PascalName}}Jobs(s core.Scheduler, log *logger.Logger) error {
+	return s.Add(New{{.PascalName}}Job(log))
 }

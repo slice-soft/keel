@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 type {{.CamelName}}SchedulerStub struct {
@@ -27,7 +28,7 @@ func (s *{{.CamelName}}SchedulerStub) Stop(ctx context.Context) {
 
 func TestRegister{{.PascalName}}Jobs(t *testing.T) {
 	s := &{{.CamelName}}SchedulerStub{}
-	if err := Register{{.PascalName}}Jobs(s); err != nil {
+	if err := Register{{.PascalName}}Jobs(s, logger.NewLogger(false)); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
 	if s.added != 1 {

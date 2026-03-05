@@ -1,9 +1,13 @@
 package middleware
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
 func Test{{.PascalName}}Middleware(t *testing.T) {
-	if {{.PascalName}}() == nil {
+	if {{.PascalName}}(logger.NewLogger(false)) == nil {
 		t.Fatal("expected middleware handler")
 	}
 }

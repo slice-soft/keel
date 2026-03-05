@@ -1,11 +1,16 @@
 package {{.PackageName}}
 
-import "github.com/slice-soft/ss-keel-core/core"
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
-type {{.PascalName}}Controller struct{}
+type {{.PascalName}}Controller struct {
+	log *logger.Logger
+}
 
-func New{{.PascalName}}Controller() *{{.PascalName}}Controller {
-	return &{{.PascalName}}Controller{}
+func New{{.PascalName}}Controller(log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{log: log}
 }
 
 func (c *{{.PascalName}}Controller) Routes() []core.Route {
@@ -17,5 +22,8 @@ func (c *{{.PascalName}}Controller) Routes() []core.Route {
 }
 
 func (c *{{.PascalName}}Controller) Handle(ctx *core.Ctx) error {
+	if c.log != nil {
+		c.log.Info("handling {{.KebabName}} controller request")
+	}
 	return ctx.OK(map[string]string{"component": "{{.KebabName}}"})
 }

@@ -1,14 +1,23 @@
 package {{.PackageName}}
 
-import "context"
+import (
+	"context"
 
-type {{.PascalName}}Service struct{}
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
-func New{{.PascalName}}Service() *{{.PascalName}}Service {
-	return &{{.PascalName}}Service{}
+type {{.PascalName}}Service struct {
+	log *logger.Logger
+}
+
+func New{{.PascalName}}Service(log *logger.Logger) *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{log: log}
 }
 
 func (s *{{.PascalName}}Service) Execute(ctx context.Context) error {
 	_ = ctx
+	if s.log != nil {
+		s.log.Info("executing {{.KebabName}} service")
+	}
 	return nil
 }

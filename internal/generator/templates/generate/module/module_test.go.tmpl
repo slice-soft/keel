@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 func TestModuleRegister(t *testing.T) {
 	app := core.New(core.KConfig{Port: 7331, ServiceName: "test", Env: "test"})
-	m := &Module{}
+	m := NewModule(logger.NewLogger(false))
 	m.Register(app)
 }

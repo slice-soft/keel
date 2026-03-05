@@ -3,10 +3,12 @@ package checkers
 import (
 	"context"
 	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 func Test{{.PascalName}}Checker(t *testing.T) {
-	checker := New{{.PascalName}}Checker()
+	checker := New{{.PascalName}}Checker(logger.NewLogger(false))
 	if checker.Name() != "{{.KebabName}}" {
 		t.Fatalf("unexpected checker name: %s", checker.Name())
 	}

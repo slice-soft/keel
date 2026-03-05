@@ -4,14 +4,17 @@ import (
 	"context"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-type {{.PascalName}}Checker struct{}
+type {{.PascalName}}Checker struct {
+	log *logger.Logger
+}
 
 var _ core.HealthChecker = (*{{.PascalName}}Checker)(nil)
 
-func New{{.PascalName}}Checker() *{{.PascalName}}Checker {
-	return &{{.PascalName}}Checker{}
+func New{{.PascalName}}Checker(log *logger.Logger) *{{.PascalName}}Checker {
+	return &{{.PascalName}}Checker{log: log}
 }
 
 func (c *{{.PascalName}}Checker) Name() string {
@@ -20,5 +23,8 @@ func (c *{{.PascalName}}Checker) Name() string {
 
 func (c *{{.PascalName}}Checker) Check(ctx context.Context) error {
 	_ = ctx
+	if c.log != nil {
+		c.log.Debug("checking {{.KebabName}} health")
+	}
 	return nil
 }

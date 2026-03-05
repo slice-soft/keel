@@ -1,9 +1,13 @@
 package guards
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
 func Test{{.PascalName}}Guard(t *testing.T) {
-	g := New{{.PascalName}}Guard()
+	g := New{{.PascalName}}Guard(logger.NewLogger(false))
 	if g == nil {
 		t.Fatal("expected guard instance")
 	}

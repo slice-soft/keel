@@ -4,17 +4,23 @@ import (
 	"context"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 type {{.PascalName}}Publisher struct {
 	pub core.Publisher
+	log *logger.Logger
 }
 
-func New{{.PascalName}}Publisher(pub core.Publisher) *{{.PascalName}}Publisher {
-	return &{{.PascalName}}Publisher{pub: pub}
+func New{{.PascalName}}Publisher(pub core.Publisher, log *logger.Logger) *{{.PascalName}}Publisher {
+	return &{{.PascalName}}Publisher{pub: pub, log: log}
 }
 
 func (p *{{.PascalName}}Publisher) Publish{{.PascalName}}Created(ctx context.Context, payload []byte) error {
+	if p.log != nil {
+		p.log.Info("publishing {{.KebabName}} created event")
+	}
+
 	return p.pub.Publish(ctx, core.Message{
 		Topic:   "{{.KebabName}}.created",
 		Key:     []byte("{{.KebabName}}"),

@@ -1,9 +1,13 @@
 package {{.PackageName}}
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
 
 func Test{{.PascalName}}Controller(t *testing.T) {
-	ctrl := New{{.PascalName}}Controller()
+	ctrl := New{{.PascalName}}Controller(logger.NewLogger(false))
 	if ctrl == nil {
 		t.Fatal("expected controller instance")
 	}

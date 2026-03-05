@@ -4,22 +4,30 @@ import (
 	"context"
 
 	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/logger"
 )
 
 type {{.PascalName}}Subscriber struct {
 	sub core.Subscriber
+	log *logger.Logger
 }
 
-func New{{.PascalName}}Subscriber(sub core.Subscriber) *{{.PascalName}}Subscriber {
-	return &{{.PascalName}}Subscriber{sub: sub}
+func New{{.PascalName}}Subscriber(sub core.Subscriber, log *logger.Logger) *{{.PascalName}}Subscriber {
+	return &{{.PascalName}}Subscriber{sub: sub, log: log}
 }
 
 func (s *{{.PascalName}}Subscriber) Subscribe(ctx context.Context) error {
+	if s.log != nil {
+		s.log.Info("subscribing to {{.KebabName}}.created events")
+	}
 	return s.sub.Subscribe(ctx, "{{.KebabName}}.created", s.on{{.PascalName}}Created)
 }
 
 func (s *{{.PascalName}}Subscriber) on{{.PascalName}}Created(ctx context.Context, msg core.Message) error {
 	_ = ctx
 	_ = msg
+	if s.log != nil {
+		s.log.Debug("processed {{.KebabName}}.created event")
+	}
 	return nil
 }
