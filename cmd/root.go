@@ -60,7 +60,5 @@ func init() {
 	rootCmd.AddCommand(new.NewCommand())
 	rootCmd.AddCommand(initcmd.NewCommand())
 	rootCmd.AddCommand(completion.NewCommand(rootCmd))
-	// rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(run.NewCommand())
-	// rootCmd.AddCommand(upgradeCmd)
 }
