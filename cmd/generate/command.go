@@ -8,6 +8,8 @@ var (
 	inMain              bool
 )
 
+var executeFn = execute
+
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "generate [type] [name]",
@@ -30,5 +32,5 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		WithRepository:      withRepository,
 		ControllerInMain:    inMain,
 	}
-	return execute(args[0], args[1], opts)
+	return executeFn(args[0], args[1], opts)
 }
