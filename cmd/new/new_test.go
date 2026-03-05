@@ -3,6 +3,7 @@ package new
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -244,4 +245,75 @@ func TestDefaultModulePath(t *testing.T) {
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
+}
+
+func TestValidateNonEmpty(t *testing.T) {
+	validate := validateNonEmpty("Field")
+	if err := validate("value"); err != nil {
+		t.Fatalf("expected nil error for non-empty value, got %v", err)
+	}
+	if err := validate("   "); err == nil {
+		t.Fatalf("expected error for empty value")
+	}
+}
+
+func TestCollectProjectSetupWithDefaults(t *testing.T) {
+	t.Run("returns defaults when project directory does not exist", func(t *testing.T) {
+		oldPath := os.Getenv("PATH")
+		binDir := t.TempDir()
+		airName := "air"
+		if runtime.GOOS == "windows" {
+			airName = "air.exe"
+		}
+		airPath := filepath.Join(binDir, airName)
+		if err := os.WriteFile(airPath, []byte(""), 0755); err != nil {
+			t.Fatalf("failed to create fake air binary: %v", err)
+		}
+		t.Setenv("PATH", binDir+string(os.PathListSeparator)+oldPath)
+
+		cwd := t.TempDir()
+		oldWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get wd: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWD) }()
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("failed to chdir: %v", err)
+		}
+
+		setup, err := collectProjectSetupWithDefaults("my-backend")
+		if err != nil {
+			t.Fatalf("collectProjectSetupWithDefaults returned error: %v", err)
+		}
+
+		if setup.appName != "my-backend" {
+			t.Fatalf("unexpected appName: %q", setup.appName)
+		}
+		if setup.moduleName != "github.com/my-github-user/my-backend" {
+			t.Fatalf("unexpected moduleName: %q", setup.moduleName)
+		}
+		if !setup.useAir || !setup.includeAirConfig || !setup.useEnv || !setup.initGit || !setup.installDeps {
+			t.Fatalf("expected default boolean flags to be enabled: %#v", setup)
+		}
+	})
+
+	t.Run("fails when project directory already exists", func(t *testing.T) {
+		cwd := t.TempDir()
+		oldWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get wd: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWD) }()
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("failed to chdir: %v", err)
+		}
+		if err := os.Mkdir("existing-app", 0755); err != nil {
+			t.Fatalf("failed to create existing directory: %v", err)
+		}
+
+		_, err = collectProjectSetupWithDefaults("existing-app")
+		if err == nil {
+			t.Fatalf("expected error when directory exists")
+		}
+	})
 }

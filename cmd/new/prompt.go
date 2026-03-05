@@ -7,6 +7,13 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
+var runPromptForm = func(form *huh.Form) error {
+	return form.WithTheme(keelTheme).Run()
+}
+
+var airInstalledFn = airInstalled
+var installAirBinaryFn = installAirBinary
+
 func resolveProjectName(args []string) (string, error) {
 	if len(args) > 0 {
 		if err := validateProjectName(args[0]); err != nil {
@@ -20,7 +27,7 @@ func resolveProjectName(args []string) (string, error) {
 	}
 
 	appName := ""
-	if err := huh.NewForm(
+	if err := runPromptForm(huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
 				Title("Project name?").
@@ -28,7 +35,7 @@ func resolveProjectName(args []string) (string, error) {
 				Validate(validateProjectName).
 				Value(&appName),
 		),
-	).WithTheme(keelTheme).Run(); err != nil {
+	)); err != nil {
 		return "", err
 	}
 
@@ -37,7 +44,7 @@ func resolveProjectName(args []string) (string, error) {
 
 func promptModulePath(appName string) (string, error) {
 	host := "github"
-	if err := huh.NewForm(
+	if err := runPromptForm(huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("Where will this module be hosted?").
@@ -49,7 +56,7 @@ func promptModulePath(appName string) (string, error) {
 				).
 				Value(&host),
 		),
-	).WithTheme(keelTheme).Run(); err != nil {
+	)); err != nil {
 		return "", err
 	}
 
@@ -59,7 +66,7 @@ func promptModulePath(appName string) (string, error) {
 	switch host {
 	case "github":
 		owner := ""
-		if err := huh.NewForm(
+		if err := runPromptForm(huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
 					Title("GitHub username or organization?").
@@ -67,14 +74,14 @@ func promptModulePath(appName string) (string, error) {
 					Validate(validateNonEmpty("GitHub username or organization")).
 					Value(&owner),
 			),
-		).WithTheme(keelTheme).Run(); err != nil {
+		)); err != nil {
 			return "", err
 		}
 		preview = fmt.Sprintf("github.com/%s/%s", strings.TrimSpace(owner), appName)
 
 	case "gitlab":
 		owner := ""
-		if err := huh.NewForm(
+		if err := runPromptForm(huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
 					Title("GitLab username or group?").
@@ -82,14 +89,14 @@ func promptModulePath(appName string) (string, error) {
 					Validate(validateNonEmpty("GitLab username or group")).
 					Value(&owner),
 			),
-		).WithTheme(keelTheme).Run(); err != nil {
+		)); err != nil {
 			return "", err
 		}
 		preview = fmt.Sprintf("gitlab.com/%s/%s", strings.TrimSpace(owner), appName)
 
 	case "custom":
 		domain := ""
-		if err := huh.NewForm(
+		if err := runPromptForm(huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
 					Title("Custom domain?").
@@ -97,7 +104,7 @@ func promptModulePath(appName string) (string, error) {
 					Validate(validateCustomDomain).
 					Value(&domain),
 			),
-		).WithTheme(keelTheme).Run(); err != nil {
+		)); err != nil {
 			return "", err
 		}
 		cleanDomain := strings.Trim(strings.TrimSpace(domain), "/")
@@ -121,7 +128,7 @@ func confirmOrEditModulePath(preview string, allowLocal bool) (string, error) {
 	fmt.Println()
 
 	usePreview := true
-	if err := huh.NewForm(
+	if err := runPromptForm(huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title("Use this module path?").
@@ -129,7 +136,7 @@ func confirmOrEditModulePath(preview string, allowLocal bool) (string, error) {
 				Negative("Edit").
 				Value(&usePreview),
 		),
-	).WithTheme(keelTheme).Run(); err != nil {
+	)); err != nil {
 		return "", err
 	}
 
@@ -138,7 +145,7 @@ func confirmOrEditModulePath(preview string, allowLocal bool) (string, error) {
 	}
 
 	modulePath := preview
-	if err := huh.NewForm(
+	if err := runPromptForm(huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
 				Title("Module path?").
@@ -148,7 +155,7 @@ func confirmOrEditModulePath(preview string, allowLocal bool) (string, error) {
 				}).
 				Value(&modulePath),
 		),
-	).WithTheme(keelTheme).Run(); err != nil {
+	)); err != nil {
 		return "", err
 	}
 
@@ -157,7 +164,7 @@ func confirmOrEditModulePath(preview string, allowLocal bool) (string, error) {
 
 func promptYesNo(title string, defaultValue bool) (bool, error) {
 	choice := defaultValue
-	if err := huh.NewForm(
+	if err := runPromptForm(huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title(title).
@@ -165,7 +172,7 @@ func promptYesNo(title string, defaultValue bool) (bool, error) {
 				Affirmative("yes").
 				Negative("No"),
 		),
-	).WithTheme(keelTheme).Run(); err != nil {
+	)); err != nil {
 		return false, err
 	}
 	return choice, nil
@@ -186,7 +193,7 @@ func promptAirSetup() (bool, bool, error) {
 	}
 
 	fmt.Println()
-	if airInstalled() {
+	if airInstalledFn() {
 		fmt.Println("  ✓ Air is already installed")
 		return true, includeAirConfig, nil
 	}
@@ -203,12 +210,12 @@ func promptAirSetup() (bool, bool, error) {
 
 	fmt.Println()
 	fmt.Println("  Installing Air...")
-	if err := installAirBinary(); err != nil {
+	if err := installAirBinaryFn(); err != nil {
 		fmt.Printf("  ⚠  failed to install Air: %v\n", err)
 		return true, includeAirConfig, nil
 	}
 
-	if airInstalled() {
+	if airInstalledFn() {
 		fmt.Println("  ✓ Air installed")
 		return true, includeAirConfig, nil
 	}

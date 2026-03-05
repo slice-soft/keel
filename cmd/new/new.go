@@ -10,6 +10,10 @@ var withoutStarterModule bool
 var withFolderStructure bool
 var yesFlag bool
 
+var collectProjectSetupFn = collectProjectSetup
+var scaffoldProjectFn = scaffoldProject
+var runPostSetupFn = runPostSetup
+
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "new [project-name]",
@@ -46,16 +50,16 @@ func NewCommand() *cobra.Command {
 func runNew(cmd *cobra.Command, args []string) error {
 	printWelcome()
 
-	setup, err := collectProjectSetup(args)
+	setup, err := collectProjectSetupFn(args)
 	if err != nil {
 		return err
 	}
 
-	if err := scaffoldProject(setup); err != nil {
+	if err := scaffoldProjectFn(setup); err != nil {
 		return err
 	}
 
-	runPostSetup(setup)
+	runPostSetupFn(setup)
 	printProjectReady(setup.appName)
 	return nil
 }

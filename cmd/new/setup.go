@@ -6,8 +6,13 @@ import (
 	"strings"
 )
 
+var resolveProjectNameFn = resolveProjectName
+var promptModulePathFn = promptModulePath
+var promptAirSetupFn = promptAirSetup
+var promptYesNoFn = promptYesNo
+
 func collectProjectSetup(args []string) (projectSetup, error) {
-	initialAppName, err := resolveProjectName(args)
+	initialAppName, err := resolveProjectNameFn(args)
 	if err != nil {
 		return projectSetup{}, err
 	}
@@ -16,7 +21,7 @@ func collectProjectSetup(args []string) (projectSetup, error) {
 		return collectProjectSetupWithDefaults(initialAppName)
 	}
 
-	moduleName, err := promptModulePath(initialAppName)
+	moduleName, err := promptModulePathFn(initialAppName)
 	if err != nil {
 		return projectSetup{}, err
 	}
@@ -30,22 +35,22 @@ func collectProjectSetup(args []string) (projectSetup, error) {
 		return projectSetup{}, fmt.Errorf("directory '%s' already exists", appName)
 	}
 
-	useAir, includeAirConfig, err := promptAirSetup()
+	useAir, includeAirConfig, err := promptAirSetupFn()
 	if err != nil {
 		return projectSetup{}, err
 	}
 
-	useEnv, err := promptYesNo("Include .env support?", true)
+	useEnv, err := promptYesNoFn("Include .env support?", true)
 	if err != nil {
 		return projectSetup{}, err
 	}
 
-	initGit, err := promptYesNo("Initialize a new git repository?", true)
+	initGit, err := promptYesNoFn("Initialize a new git repository?", true)
 	if err != nil {
 		return projectSetup{}, err
 	}
 
-	installDeps, err := promptYesNo("Install dependencies?", true)
+	installDeps, err := promptYesNoFn("Install dependencies?", true)
 	if err != nil {
 		return projectSetup{}, err
 	}
@@ -71,10 +76,10 @@ func collectProjectSetupWithDefaults(appName string) (projectSetup, error) {
 	moduleName := defaultModulePath(appName)
 	printAutomaticModulePathWarning()
 
-	if !airInstalled() {
+	if !airInstalledFn() {
 		fmt.Println("  ⚠  Air is not installed on your PATH.")
 		fmt.Println("  Installing Air with: go install github.com/air-verse/air@latest")
-		if err := installAirBinary(); err != nil {
+		if err := installAirBinaryFn(); err != nil {
 			fmt.Printf("  ⚠  failed to install Air: %v\n", err)
 		}
 	}
