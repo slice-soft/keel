@@ -54,7 +54,6 @@ func init() {
 	rootCmd.AddCommand(initcmd.NewCommand())
 	rootCmd.AddCommand(completion.NewCommand(rootCmd))
 	rootCmd.AddCommand(run.NewCommand())
-	rootCmd.AddCommand(newVersionCommand())
 }
 
 func syncRootVersionOutput() {

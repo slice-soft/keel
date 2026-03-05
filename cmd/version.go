@@ -5,8 +5,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 const versionBanner = `
@@ -30,17 +28,6 @@ const (
 	colorBlue  = "\033[34m"
 	colorWhite = "\033[97m"
 )
-
-func newVersionCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Show Keel CLI version details",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Fprint(cmd.OutOrStdout(), renderVersionOutput(version, commit, buildDate))
-		},
-	}
-}
 
 func renderVersionOutput(cliVersion, cliCommit, cliBuildDate string) string {
 	var b strings.Builder
