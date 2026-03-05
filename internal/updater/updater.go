@@ -18,6 +18,13 @@ const (
 	checkInterval = 24 * time.Hour
 )
 
+var fetchLatestReleaseFn = fetchLatestRelease
+var downloadBinaryFn = downloadBinary
+var replaceBinaryFn = replaceBinary
+var executablePathFn = os.Executable
+var evalSymlinksFn = filepath.EvalSymlinks
+var removeFileFn = os.Remove
+
 // Release represents the GitHub API release response.
 type Release struct {
 	TagName string  `json:"tag_name"`
@@ -68,7 +75,7 @@ func CheckAndNotify(currentVersion string) chan string {
 func Upgrade(currentVersion string) error {
 	fmt.Println("\n⚓  Checking latest version...")
 
-	release, err := fetchLatestRelease()
+	release, err := fetchLatestReleaseFn()
 	if err != nil {
 		return fmt.Errorf("error querying GitHub: %w", err)
 	}
@@ -95,21 +102,21 @@ func Upgrade(currentVersion string) error {
 
 	fmt.Printf("  Downloading %s...\n", assetName)
 
-	tmpFile, err := downloadBinary(downloadURL)
+	tmpFile, err := downloadBinaryFn(downloadURL)
 	if err != nil {
 		return fmt.Errorf("error downloading binary: %w", err)
 	}
-	defer os.Remove(tmpFile)
+	defer removeFileFn(tmpFile)
 
-	execPath, err := os.Executable()
+	execPath, err := executablePathFn()
 	if err != nil {
 		return fmt.Errorf("error resolving executable path: %w", err)
 	}
-	execPath, _ = filepath.EvalSymlinks(execPath)
+	execPath, _ = evalSymlinksFn(execPath)
 
 	fmt.Println("  Installing...")
 
-	if err := replaceBinary(tmpFile, execPath); err != nil {
+	if err := replaceBinaryFn(tmpFile, execPath); err != nil {
 		return fmt.Errorf("error installing: %w", err)
 	}
 
