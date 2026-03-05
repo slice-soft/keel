@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/slice-soft/keel/cmd/completion"
+	"github.com/slice-soft/keel/cmd/generate"
 	initcmd "github.com/slice-soft/keel/cmd/init"
 	"github.com/slice-soft/keel/cmd/new"
 	"github.com/slice-soft/keel/cmd/run"
@@ -52,6 +53,7 @@ func init() {
 	syncRootVersionOutput()
 	rootCmd.AddCommand(new.NewCommand())
 	rootCmd.AddCommand(initcmd.NewCommand())
+	rootCmd.AddCommand(generate.NewCommand())
 	rootCmd.AddCommand(completion.NewCommand(rootCmd))
 	rootCmd.AddCommand(run.NewCommand())
 }
