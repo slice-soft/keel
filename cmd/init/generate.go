@@ -9,6 +9,8 @@ import (
 	"github.com/slice-soft/keel/internal/generator"
 )
 
+var getwdFn = os.Getwd
+
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
@@ -58,7 +60,7 @@ func buildInitFiles(keelConfigPath string, useAir, airConfigExists bool) []newcm
 }
 
 func currentDirName() (string, error) {
-	wd, err := os.Getwd()
+	wd, err := getwdFn()
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve current directory: %w", err)
 	}

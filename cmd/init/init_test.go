@@ -1,6 +1,7 @@
 package initcmd
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,6 +153,63 @@ func TestBuildInitFiles(t *testing.T) {
 		files := buildInitFiles("keel.toml", false, false)
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file without air, got %d", len(files))
+		}
+	})
+}
+
+func TestCurrentDirName(t *testing.T) {
+	t.Run("returns app when working directory is filesystem root", func(t *testing.T) {
+		oldWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get wd: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWD) }()
+
+		if err := os.Chdir(string(filepath.Separator)); err != nil {
+			t.Fatalf("failed to chdir to filesystem root: %v", err)
+		}
+
+		got, err := currentDirName()
+		if err != nil {
+			t.Fatalf("currentDirName returned error: %v", err)
+		}
+		if got != "app" {
+			t.Fatalf("expected app for root directory, got %q", got)
+		}
+	})
+
+	t.Run("returns error when cwd cannot be resolved", func(t *testing.T) {
+		previousGetwdFn := getwdFn
+		getwdFn = func() (string, error) {
+			return "", errors.New("wd failure")
+		}
+		t.Cleanup(func() {
+			getwdFn = previousGetwdFn
+		})
+
+		_, err := currentDirName()
+		if err == nil {
+			t.Fatalf("expected error when cwd was removed")
+		}
+	})
+}
+
+func TestGenerateKeelConfigErrors(t *testing.T) {
+	t.Run("returns error for invalid destination path", func(t *testing.T) {
+		dir := t.TempDir()
+		oldWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get wd: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWD) }()
+
+		if err := os.Chdir(dir); err != nil {
+			t.Fatalf("failed to chdir: %v", err)
+		}
+
+		err = generateKeelConfig("bad\x00path", true, false)
+		if err == nil {
+			t.Fatalf("expected generateKeelConfig error for invalid destination")
 		}
 	})
 }

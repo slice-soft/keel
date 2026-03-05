@@ -2,6 +2,11 @@ package initcmd
 
 import "github.com/spf13/cobra"
 
+var validateKeelConfigDoesNotExistFn = validateKeelConfigDoesNotExist
+var promptUseAirFn = promptUseAir
+var ensureAirReadyFn = ensureAirReady
+var generateKeelConfigFn = generateKeelConfig
+
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -16,18 +21,18 @@ func NewCommand() *cobra.Command {
 func runInit(cmd *cobra.Command, args []string) error {
 	const keelConfigPath = "keel.toml"
 
-	if err := validateKeelConfigDoesNotExist(keelConfigPath); err != nil {
+	if err := validateKeelConfigDoesNotExistFn(keelConfigPath); err != nil {
 		return err
 	}
 
-	useAir, airConfigExists, err := promptUseAir()
+	useAir, airConfigExists, err := promptUseAirFn()
 	if err != nil {
 		return err
 	}
 
-	if err := ensureAirReady(useAir); err != nil {
+	if err := ensureAirReadyFn(useAir); err != nil {
 		return err
 	}
 
-	return generateKeelConfig(keelConfigPath, useAir, airConfigExists)
+	return generateKeelConfigFn(keelConfigPath, useAir, airConfigExists)
 }
