@@ -1,0 +1,86 @@
+# {{.AppName}}
+
+Proyecto generado con **Keel CLI**.
+
+Documentación oficial:
+- https://docs.keel-go.dev
+
+## Inicio rápido
+
+```bash
+go mod tidy
+keel run dev
+```
+
+## Estructura del proyecto
+
+{{- if .UseStarterModule }}
+El proyecto incluye un módulo starter listo para correr (`GET /hello`):
+{{- else }}
+El proyecto se crea sin módulo starter. Puedes crear uno con:
+```bash
+keel g module users
+```
+{{- end }}
+
+```text
+├── internal/
+│   └── modules/
+{{- if .UseStarterModule }}
+│       └── starter/
+│           ├── module.go
+│           ├── controller.go
+│           ├── service.go
+│           └── dto.go
+{{- else }}
+│       └── (tus-modulos-aqui)
+{{- end }}
+{{- if .UseFolderStructure }}
+│   ├── middleware/
+│   ├── guards/
+│   ├── scheduler/
+│   ├── checkers/
+│   ├── events/
+│   └── hooks/
+{{- end }}
+├── go.mod
+├── keel.toml
+{{- if .UseEnv }}
+├── .env
+{{- end }}
+{{- if .UseAirConfig }}
+├── .air.toml
+{{- end }}
+└── .gitignore
+```
+
+{{- if .UseFolderStructure }}
+
+## Estructura recomendada
+
+- `internal/modules/`: módulos de dominio (users, orders, payments, etc.)
+- `internal/middleware/`: middlewares HTTP
+- `internal/guards/`: guards de acceso
+- `internal/events/`: publishers/subscribers
+- `internal/checkers/`: health checks
+- `internal/scheduler/`: jobs y schedulers
+- `internal/hooks/`: hooks de apagado
+
+{{- else }}
+
+## Estructura recomendada
+
+- `internal/modules/`: módulos de dominio (users, orders, payments, etc.)
+
+Puedes agregar manualmente carpetas como:
+
+- `middleware`
+- `guards`
+- `scheduler`
+- `events`
+- `checkers`
+- `hooks`
+
+si tu proyecto las necesita.
+
+{{- end }}
