@@ -63,11 +63,13 @@ func TestSyncRootVersionOutputUsesSharedRenderer(t *testing.T) {
 	previousCommit := commit
 	previousBuildDate := buildDate
 	previousRootVersion := rootCmd.Version
+	previousRootLong := rootCmd.Long
 	t.Cleanup(func() {
 		version = previousVersion
 		commit = previousCommit
 		buildDate = previousBuildDate
 		rootCmd.Version = previousRootVersion
+		rootCmd.Long = previousRootLong
 	})
 
 	version = "v9.9.9"
@@ -79,5 +81,8 @@ func TestSyncRootVersionOutputUsesSharedRenderer(t *testing.T) {
 	want := renderVersionOutput(version, commit, buildDate)
 	if rootCmd.Version != want {
 		t.Fatalf("expected root version output to match renderer")
+	}
+	if rootCmd.Long != want {
+		t.Fatalf("expected root long help header to match renderer")
 	}
 }

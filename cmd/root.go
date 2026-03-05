@@ -67,6 +67,8 @@ func init() {
 }
 
 func syncRootVersionOutput() {
-	rootCmd.Version = renderVersionOutput(version, commit, buildDate)
+	versionOutput := renderVersionOutput(version, commit, buildDate)
+	rootCmd.Version = versionOutput
+	rootCmd.Long = versionOutput
 	rootCmd.SetVersionTemplate("{{.Version}}")
 }
