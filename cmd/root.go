@@ -24,17 +24,8 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "keel",
 	Short: "⚓ Keel CLI — Opinionated Go framework by slice-soft",
-	Long: `
-  ⚓  K E E L  C L I
-  ────────────────────────────────
-  Opinionated Go framework by slice-soft
-  keel-go.dev
-  ────────────────────────────────`,
 
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if cmd.Name() == "upgrade" {
-			return
-		}
 		updateCh = updater.CheckAndNotify(version)
 	},
 
