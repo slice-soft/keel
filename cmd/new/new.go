@@ -12,14 +12,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var withoutStarterModule bool
+var withFolderStructure bool
+
 func NewCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "new [project-name]",
 		Aliases: []string{"n"},
 		Short:   "Create a new Keel project",
 		Args:    cobra.MaximumNArgs(1),
 		RunE:    runNew,
 	}
+
+	cmd.Flags().BoolVar(
+		&withoutStarterModule,
+		"without-starter-module",
+		false,
+		"Skip creating the default 'starter' module (for advanced users)",
+	)
+
+	cmd.Flags().BoolVar(
+		&withFolderStructure,
+		"with-folder-structure",
+		false,
+		"Use a more opinionated folder structure with separate directories for middleware, guards, scheduler, checkers, events, and hooks (instead of a flat 'internal' directory)",
+	)
+	return cmd
 }
 
 type projectFile struct {
@@ -28,13 +46,15 @@ type projectFile struct {
 }
 
 type projectSetup struct {
-	appName          string
-	moduleName       string
-	useAir           bool
-	includeAirConfig bool
-	useEnv           bool
-	initGit          bool
-	installDeps      bool
+	appName              string
+	moduleName           string
+	useAir               bool
+	includeAirConfig     bool
+	useEnv               bool
+	initGit              bool
+	installDeps          bool
+	withoutStarterModule bool
+	withFolderStructure  bool
 }
 
 var keelTheme = huh.ThemeCharm()
@@ -103,13 +123,15 @@ func collectProjectSetup(args []string) (projectSetup, error) {
 	}
 
 	return projectSetup{
-		appName:          appName,
-		moduleName:       moduleName,
-		useAir:           useAir,
-		includeAirConfig: includeAirConfig,
-		useEnv:           useEnv,
-		initGit:          initGit,
-		installDeps:      installDeps,
+		appName:              appName,
+		moduleName:           moduleName,
+		useAir:               useAir,
+		includeAirConfig:     includeAirConfig,
+		useEnv:               useEnv,
+		initGit:              initGit,
+		installDeps:          installDeps,
+		withoutStarterModule: withoutStarterModule,
+		withFolderStructure:  withFolderStructure,
 	}, nil
 }
 
@@ -120,24 +142,29 @@ func projectNameFromModule(moduleName string) (string, error) {
 }
 
 func scaffoldProject(setup projectSetup) error {
+	useStarterModule := !setup.withoutStarterModule
+	useFolderStructure := setup.withFolderStructure
+
 	data := generator.NewProjectData(
 		setup.appName,
 		setup.moduleName,
 		setup.useAir,
 		setup.includeAirConfig,
 		setup.useEnv,
+		useStarterModule,
+		useFolderStructure,
 	)
 
 	fmt.Printf("\n  Creating project files...\n\n")
-	if err := renderProjectFiles(setup.appName, setup.includeAirConfig, setup.useEnv, data); err != nil {
+	if err := renderProjectFiles(setup.appName, setup.includeAirConfig, setup.useEnv, useStarterModule, data); err != nil {
 		return err
 	}
 
-	return createProjectDirectories(setup.appName)
+	return createProjectDirectories(setup.appName, setup.withFolderStructure, setup.withoutStarterModule)
 }
 
-func renderProjectFiles(appName string, includeAirConfig, useEnv bool, data generator.Data) error {
-	files := buildProjectFiles(appName, includeAirConfig, useEnv)
+func renderProjectFiles(appName string, includeAirConfig, useEnv, includeStarterModule bool, data generator.Data) error {
+	files := buildProjectFiles(appName, includeAirConfig, useEnv, includeStarterModule)
 	for _, f := range files {
 		if err := generator.RenderToFile(f.tmpl, f.dest, data); err != nil {
 			return fmt.Errorf("error generating %s: %w", f.dest, err)
@@ -147,15 +174,22 @@ func renderProjectFiles(appName string, includeAirConfig, useEnv bool, data gene
 	return nil
 }
 
-func createProjectDirectories(appName string) error {
+func createProjectDirectories(appName string, withFolderStructure, withoutStarterModule bool) error {
+	if !withFolderStructure {
+		return nil
+	}
+
 	dirs := []string{
-		filepath.Join(appName, "internal", "modules"),
 		filepath.Join(appName, "internal", "middleware"),
 		filepath.Join(appName, "internal", "guards"),
 		filepath.Join(appName, "internal", "scheduler"),
 		filepath.Join(appName, "internal", "checkers"),
 		filepath.Join(appName, "internal", "events"),
 		filepath.Join(appName, "internal", "hooks"),
+	}
+
+	if withoutStarterModule {
+		dirs = append(dirs, filepath.Join(appName, "internal", "modules"))
 	}
 
 	for _, d := range dirs {
@@ -478,11 +512,12 @@ func installAirBinary() error {
 	return installCmd.Run()
 }
 
-func buildProjectFiles(appName string, includeAirConfig, useEnv bool) []projectFile {
+func buildProjectFiles(appName string, includeAirConfig, useEnv, includeStarterModule bool) []projectFile {
 	files := []projectFile{
 		{tmpl: "templates/project/main.go.tmpl", dest: filepath.Join(appName, "cmd", "main.go")},
 		{tmpl: "templates/project/go.mod.tmpl", dest: filepath.Join(appName, "go.mod")},
 		{tmpl: "templates/project/keel.toml.tmpl", dest: filepath.Join(appName, "keel.toml")},
+		{tmpl: "templates/project/readme.tmpl", dest: filepath.Join(appName, "README.md")},
 		{tmpl: "templates/project/gitignore.tmpl", dest: filepath.Join(appName, ".gitignore")},
 	}
 
@@ -498,6 +533,17 @@ func buildProjectFiles(appName string, includeAirConfig, useEnv bool) []projectF
 			tmpl: "templates/project/air.toml.tmpl",
 			dest: filepath.Join(appName, ".air.toml"),
 		})
+	}
+
+	if includeStarterModule {
+		modulesPath := "internal/modules"
+		filesModule := []projectFile{
+			{tmpl: "templates/module/starter_module.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "module.go")},
+			{tmpl: "templates/module/starter_service.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "service.go")},
+			{tmpl: "templates/module/starter_controller.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "controller.go")},
+			{tmpl: "templates/module/starter_dto.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "dto.go")},
+		}
+		files = append(files, filesModule...)
 	}
 
 	return files

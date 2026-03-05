@@ -3,6 +3,7 @@ package new
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -87,16 +88,19 @@ func TestValidateCustomDomain(t *testing.T) {
 func TestBuildProjectFiles(t *testing.T) {
 	appName := "my-backend"
 
-	filesWithAir := buildProjectFiles(appName, true, true)
-	filesWithoutAir := buildProjectFiles(appName, false, true)
-	filesWithoutEnv := buildProjectFiles(appName, true, false)
+	filesWithStarter := buildProjectFiles(appName, true, true, true)
+	filesWithoutAir := buildProjectFiles(appName, false, true, true)
+	filesWithoutEnv := buildProjectFiles(appName, true, false, true)
+	filesWithoutStarter := buildProjectFiles(appName, true, true, false)
 
 	required := map[string]bool{
 		filepath.Join(appName, "cmd", "main.go"): false,
 		filepath.Join(appName, "go.mod"):         false,
 		filepath.Join(appName, "keel.toml"):      false,
+		filepath.Join(appName, "README.md"):      false,
+		filepath.Join(appName, ".gitignore"):     false,
 	}
-	for _, f := range filesWithAir {
+	for _, f := range filesWithStarter {
 		if _, ok := required[f.dest]; ok {
 			required[f.dest] = true
 		}
@@ -108,7 +112,7 @@ func TestBuildProjectFiles(t *testing.T) {
 	}
 
 	hasAirWithConfig := false
-	for _, f := range filesWithAir {
+	for _, f := range filesWithStarter {
 		if f.dest == filepath.Join(appName, ".air.toml") {
 			hasAirWithConfig = true
 			break
@@ -138,6 +142,28 @@ func TestBuildProjectFiles(t *testing.T) {
 	}
 	if hasEnvWithoutSupport {
 		t.Fatalf("did not expect .env when useEnv=false")
+	}
+
+	hasStarterFiles := false
+	for _, f := range filesWithStarter {
+		if strings.Contains(f.dest, filepath.Join(appName, "internal", "modules", "starter")) {
+			hasStarterFiles = true
+			break
+		}
+	}
+	if !hasStarterFiles {
+		t.Fatalf("expected starter module files when includeStarterModule=true")
+	}
+
+	hasStarterWithoutFlag := false
+	for _, f := range filesWithoutStarter {
+		if strings.Contains(f.dest, filepath.Join(appName, "internal", "modules", "starter")) {
+			hasStarterWithoutFlag = true
+			break
+		}
+	}
+	if hasStarterWithoutFlag {
+		t.Fatalf("did not expect starter module files when includeStarterModule=false")
 	}
 }
 
@@ -177,12 +203,11 @@ func TestCreateProjectDirectories(t *testing.T) {
 	root := t.TempDir()
 	appName := filepath.Join(root, "my-backend")
 
-	if err := createProjectDirectories(appName); err != nil {
+	if err := createProjectDirectories(appName, true, false); err != nil {
 		t.Fatalf("createProjectDirectories returned error: %v", err)
 	}
 
 	expectedDirs := []string{
-		filepath.Join(appName, "internal", "modules"),
 		filepath.Join(appName, "internal", "middleware"),
 		filepath.Join(appName, "internal", "guards"),
 		filepath.Join(appName, "internal", "scheduler"),
