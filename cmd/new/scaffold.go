@@ -33,44 +33,44 @@ func scaffoldProject(setup projectSetup) error {
 func renderProjectFiles(appName string, includeAirConfig, useEnv, includeStarterModule bool, data generator.Data) error {
 	files := buildProjectFiles(appName, includeAirConfig, useEnv, includeStarterModule)
 	for _, f := range files {
-		if err := generator.RenderToFile(f.tmpl, f.dest, data); err != nil {
-			return fmt.Errorf("error generating %s: %w", f.dest, err)
+		if err := generator.RenderToFile(f.TemplatePath, f.Destination, data); err != nil {
+			return fmt.Errorf("error generating %s: %w", f.Destination, err)
 		}
-		fmt.Printf("  ✓ %s\n", f.dest)
+		fmt.Printf("  ✓ %s\n", f.Destination)
 	}
 	return nil
 }
 
-func buildProjectFiles(appName string, includeAirConfig, useEnv, includeStarterModule bool) []projectFile {
-	files := []projectFile{
-		{tmpl: "templates/project/main.go.tmpl", dest: filepath.Join(appName, "cmd", "main.go")},
-		{tmpl: "templates/project/go.mod.tmpl", dest: filepath.Join(appName, "go.mod")},
-		{tmpl: "templates/project/keel.toml.tmpl", dest: filepath.Join(appName, "keel.toml")},
-		{tmpl: "templates/project/readme.tmpl", dest: filepath.Join(appName, "README.md")},
-		{tmpl: "templates/project/gitignore.tmpl", dest: filepath.Join(appName, ".gitignore")},
+func buildProjectFiles(appName string, includeAirConfig, useEnv, includeStarterModule bool) []ProjectFile {
+	files := []ProjectFile{
+		{TemplatePath: "templates/project/main.go.tmpl", Destination: filepath.Join(appName, "cmd", "main.go")},
+		{TemplatePath: "templates/project/go.mod.tmpl", Destination: filepath.Join(appName, "go.mod")},
+		{TemplatePath: "templates/project/keel.toml.tmpl", Destination: filepath.Join(appName, "keel.toml")},
+		{TemplatePath: "templates/project/readme.tmpl", Destination: filepath.Join(appName, "README.md")},
+		{TemplatePath: "templates/project/gitignore.tmpl", Destination: filepath.Join(appName, ".gitignore")},
 	}
 
 	if useEnv {
-		files = append(files, projectFile{
-			tmpl: "templates/project/env.tmpl",
-			dest: filepath.Join(appName, ".env"),
+		files = append(files, ProjectFile{
+			TemplatePath: "templates/project/env.tmpl",
+			Destination:  filepath.Join(appName, ".env"),
 		})
 	}
 
 	if includeAirConfig {
-		files = append(files, projectFile{
-			tmpl: "templates/project/air.toml.tmpl",
-			dest: filepath.Join(appName, ".air.toml"),
+		files = append(files, ProjectFile{
+			TemplatePath: "templates/project/air.toml.tmpl",
+			Destination:  filepath.Join(appName, ".air.toml"),
 		})
 	}
 
 	if includeStarterModule {
 		modulesPath := "internal/modules"
-		filesModule := []projectFile{
-			{tmpl: "templates/module/starter_module.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "module.go")},
-			{tmpl: "templates/module/starter_service.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "service.go")},
-			{tmpl: "templates/module/starter_controller.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "controller.go")},
-			{tmpl: "templates/module/starter_dto.go.tmpl", dest: filepath.Join(appName, modulesPath, "starter", "dto.go")},
+		filesModule := []ProjectFile{
+			{TemplatePath: "templates/module/starter_module.go.tmpl", Destination: filepath.Join(appName, modulesPath, "starter", "module.go")},
+			{TemplatePath: "templates/module/starter_service.go.tmpl", Destination: filepath.Join(appName, modulesPath, "starter", "service.go")},
+			{TemplatePath: "templates/module/starter_controller.go.tmpl", Destination: filepath.Join(appName, modulesPath, "starter", "controller.go")},
+			{TemplatePath: "templates/module/starter_dto.go.tmpl", Destination: filepath.Join(appName, modulesPath, "starter", "dto.go")},
 		}
 		files = append(files, filesModule...)
 	}

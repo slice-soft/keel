@@ -112,8 +112,8 @@ func TestBuildProjectFiles(t *testing.T) {
 		filepath.Join(appName, ".gitignore"):     false,
 	}
 	for _, f := range filesWithStarter {
-		if _, ok := required[f.dest]; ok {
-			required[f.dest] = true
+		if _, ok := required[f.Destination]; ok {
+			required[f.Destination] = true
 		}
 	}
 	for path, found := range required {
@@ -124,7 +124,7 @@ func TestBuildProjectFiles(t *testing.T) {
 
 	hasAirWithConfig := false
 	for _, f := range filesWithStarter {
-		if f.dest == filepath.Join(appName, ".air.toml") {
+		if f.Destination == filepath.Join(appName, ".air.toml") {
 			hasAirWithConfig = true
 			break
 		}
@@ -135,7 +135,7 @@ func TestBuildProjectFiles(t *testing.T) {
 
 	hasAirWithoutConfig := false
 	for _, f := range filesWithoutAir {
-		if f.dest == filepath.Join(appName, ".air.toml") {
+		if f.Destination == filepath.Join(appName, ".air.toml") {
 			hasAirWithoutConfig = true
 			break
 		}
@@ -146,7 +146,7 @@ func TestBuildProjectFiles(t *testing.T) {
 
 	hasEnvWithoutSupport := false
 	for _, f := range filesWithoutEnv {
-		if f.dest == filepath.Join(appName, ".env") {
+		if f.Destination == filepath.Join(appName, ".env") {
 			hasEnvWithoutSupport = true
 			break
 		}
@@ -157,7 +157,7 @@ func TestBuildProjectFiles(t *testing.T) {
 
 	hasStarterFiles := false
 	for _, f := range filesWithStarter {
-		if strings.Contains(f.dest, filepath.Join(appName, "internal", "modules", "starter")) {
+		if strings.Contains(f.Destination, filepath.Join(appName, "internal", "modules", "starter")) {
 			hasStarterFiles = true
 			break
 		}
@@ -168,7 +168,7 @@ func TestBuildProjectFiles(t *testing.T) {
 
 	hasStarterWithoutFlag := false
 	for _, f := range filesWithoutStarter {
-		if strings.Contains(f.dest, filepath.Join(appName, "internal", "modules", "starter")) {
+		if strings.Contains(f.Destination, filepath.Join(appName, "internal", "modules", "starter")) {
 			hasStarterWithoutFlag = true
 			break
 		}

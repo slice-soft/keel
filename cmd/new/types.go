@@ -2,9 +2,10 @@ package new
 
 import "github.com/charmbracelet/huh"
 
-type projectFile struct {
-	tmpl string
-	dest string
+// ProjectFile is a reusable template-to-destination mapping for file generation.
+type ProjectFile struct {
+	TemplatePath string
+	Destination  string
 }
 
 type projectSetup struct {
