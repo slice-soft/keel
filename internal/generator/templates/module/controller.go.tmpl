@@ -23,21 +23,3 @@ func (c *{{.PascalName}}Controller) Routes() []core.Route {
 			Describe("Get {{.KebabName}} by ID"),
 	}
 }
-
-func (c *{{.PascalName}}Controller) FindAll(ctx *core.Ctx) error {
-	q := ctx.ParsePagination()
-	result, err := c.svc.FindAll(ctx.Context(), q)
-	if err != nil {
-		return err
-	}
-	return ctx.OK(result)
-}
-
-func (c *{{.PascalName}}Controller) FindOne(ctx *core.Ctx) error {
-	id := ctx.Params("id")
-	result, err := c.svc.FindByID(ctx.Context(), id)
-	if err != nil {
-		return err
-	}
-	return ctx.OK(result)
-}

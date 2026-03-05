@@ -7,35 +7,13 @@ import (
 )
 
 type {{.PascalName}}Service struct {
-	repo {{.PascalName}}Repository
 }
 
-func New{{.PascalName}}Service(repo {{.PascalName}}Repository) *{{.PascalName}}Service {
-	return &{{.PascalName}}Service{repo: repo}
+func New{{.PascalName}}Service() *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{}
 }
 
-func (s *{{.PascalName}}Service) FindAll(ctx context.Context, q core.PageQuery) (core.Page[{{.PascalName}}], error) {
-	return s.repo.FindAll(ctx, q)
-}
-
-func (s *{{.PascalName}}Service) FindByID(ctx context.Context, id string) (*{{.PascalName}}, error) {
-	return s.repo.FindByID(ctx, id)
-}
-
-func (s *{{.PascalName}}Service) Create(ctx context.Context, entity *{{.PascalName}}) error {
-	return s.repo.Create(ctx, entity)
-}
-
-func (s *{{.PascalName}}Service) Update(ctx context.Context, id string, entity *{{.PascalName}}) error {
-	if _, err := s.repo.FindByID(ctx, id); err != nil {
-		return core.NotFound("{{.KebabName}} not found")
-	}
-	return s.repo.Update(ctx, id, entity)
-}
-
-func (s *{{.PascalName}}Service) Delete(ctx context.Context, id string) error {
-	if _, err := s.repo.FindByID(ctx, id); err != nil {
-		return core.NotFound("{{.KebabName}} not found")
-	}
-	return s.repo.Delete(ctx, id)
+func (s *{{.PascalName}}Service) Hello(ctx context.Context) (string, error) {
+	// Implement your business logic here
+	return "Hello from {{.PascalName}}Service!", nil
 }

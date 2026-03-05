@@ -5,8 +5,7 @@ import "github.com/slice-soft/ss-keel-core/core"
 type Module struct{}
 
 func (m *Module) Register(app *core.App) {
-	repo := New{{.PascalName}}Repository()
-	svc := New{{.PascalName}}Service(repo)
+	svc := New{{.PascalName}}Service()
 	ctrl := New{{.PascalName}}Controller(svc)
 	app.RegisterController(ctrl)
 }
