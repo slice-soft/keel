@@ -3,30 +3,53 @@ package {{.PackageName}}
 import (
 	"github.com/slice-soft/ss-keel-core/core"
 	"github.com/slice-soft/ss-keel-core/logger"
+{{- if .UsesDatabase }}
+	"github.com/slice-soft/ss-keel-gorm/database"
+{{- end }}
 )
 
 type Module struct {
 	log *logger.Logger
+{{- if .UsesDatabase }}
+	db  *database.DBinstance
+{{- end }}
 }
 
-func NewModule(log *logger.Logger) *Module {
-	return &Module{log: log}
+func NewModule(log *logger.Logger{{- if .UsesDatabase }}, db *database.DBinstance{{- end }}) *Module {
+	return &Module{
+		log: log,
+{{- if .UsesDatabase }}
+		db:  db,
+{{- end }}
+	}
 }
 
 func (m *Module) Register(app *core.App) {
-{{- if .Services }}
-{{- range .Services }}
-	_ = New{{.PascalName}}Service(m.log)
-{{- end }}
-{{- end }}
 {{- if .Repositories }}
 {{- range .Repositories }}
-	_ = New{{.PascalName}}Repository(m.log)
+{{- if .UsesDatabaseRepo }}
+	{{.VarName}}Repository := New{{.PascalName}}Repository(m.log, m.db)
+{{- else }}
+	{{.VarName}}Repository := New{{.PascalName}}Repository(m.log)
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Services }}
+{{- range .Services }}
+{{- if .HasRepository }}
+	{{.VarName}}Service := New{{.PascalName}}ServiceWithRepository({{.RepositoryVar}}, m.log)
+{{- else }}
+	{{.VarName}}Service := New{{.PascalName}}Service(m.log)
+{{- end }}
 {{- end }}
 {{- end }}
 {{- if .Controllers }}
 {{- range .Controllers }}
-	{{.VarName}}Controller := New{{.PascalName}}Controller(m.log)
+{{- if .HasService }}
+	{{.VarName}}Controller := New{{.PascalName}}Controller({{.ServiceVar}}, m.log)
+{{- else }}
+	{{.VarName}}Controller := New{{.PascalName}}Controller(nil, m.log)
+{{- end }}
 	app.RegisterController({{.VarName}}Controller)
 {{- end }}
 {{- end }}

@@ -7,7 +7,7 @@ import (
 )
 
 func Test{{.PascalName}}Controller(t *testing.T) {
-	ctrl := New{{.PascalName}}Controller(logger.NewLogger(false))
+	ctrl := New{{.PascalName}}Controller(nil, logger.NewLogger(false))
 	if ctrl == nil {
 		t.Fatal("expected controller instance")
 	}

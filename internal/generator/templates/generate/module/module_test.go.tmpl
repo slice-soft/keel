@@ -9,6 +9,6 @@ import (
 
 func TestModuleRegister(t *testing.T) {
 	app := core.New(core.KConfig{Port: 7331, ServiceName: "test", Env: "test"})
-	m := NewModule(logger.NewLogger(false))
+	m := NewModule(logger.NewLogger(false){{- if .UsesDatabase }}, nil{{- end }})
 	m.Register(app)
 }

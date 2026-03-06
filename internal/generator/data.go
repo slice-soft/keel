@@ -18,6 +18,7 @@ type Data struct {
 	KebabName          string // users
 	SnakeName          string // users
 	CoreVersion        string // github.com/slice-soft/ss-keel-core v1.2.3
+	UsesDatabase       bool
 	Services           []ComponentRegistration
 	Controllers        []ComponentRegistration
 	Repositories       []ComponentRegistration
@@ -25,9 +26,14 @@ type Data struct {
 
 // ComponentRegistration holds naming metadata used in generated registries.
 type ComponentRegistration struct {
-	Name       string
-	PascalName string
-	VarName    string
+	Name             string
+	PascalName       string
+	VarName          string
+	HasRepository    bool
+	RepositoryVar    string
+	HasService       bool
+	ServiceVar       string
+	UsesDatabaseRepo bool
 }
 
 // NewData builds Data from a name in any supported format.

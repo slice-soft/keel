@@ -109,7 +109,10 @@ func execute(genType, rawName string, opts Options) error {
 	if err := generateInModule(resolvedType, parsed.moduleName, parsed.componentName); err != nil {
 		return err
 	}
-	return regenerateModuleRegistry(parsed.moduleName)
+	if err := regenerateModuleRegistry(parsed.moduleName); err != nil {
+		return err
+	}
+	return ensureModuleRegisteredInMain(parsed.moduleName)
 }
 
 func resolveType(raw string) (string, error) {
@@ -133,7 +136,13 @@ func generateModule(name string, opts Options) error {
 		files = append(files, buildSimpleFiles(typeController, name, moduleDir(name), "controller.go.tmpl", "controller_test.go.tmpl", name)...)
 	}
 	if opts.WithRepository {
-		files = append(files, buildSimpleFiles(typeRepository, name, moduleDir(name), "repository.go.tmpl", "repository_test.go.tmpl", name)...)
+		repoFiles := buildGormRepositoryFiles(name, moduleDir(name), name)
+		if !generator.IsAddonInstalled("github.com/slice-soft/ss-keel-gorm") {
+			fmt.Println("  ⚠  ss-keel-gorm not found in go.mod — generated stub repository")
+			fmt.Println("     Install the GORM adapter with: keel add gorm")
+			repoFiles = buildSimpleFiles(typeRepository, name, moduleDir(name), "repository.go.tmpl", "repository_test.go.tmpl", name)
+		}
+		files = append(files, repoFiles...)
 	}
 
 	for _, file := range files {
@@ -147,6 +156,35 @@ func generateModule(name string, opts Options) error {
 	}
 
 	return regenerateModuleRegistry(name)
+}
+
+func generateRepository(componentName, baseDir, packageOverride string) error {
+	if generator.IsAddonInstalled("github.com/slice-soft/ss-keel-gorm") {
+		return createFiles(buildGormRepositoryFiles(componentName, baseDir, packageOverride))
+	}
+	fmt.Println("  ⚠  ss-keel-gorm not found in go.mod — generated stub repository")
+	fmt.Println("     Install the GORM adapter with: keel add gorm")
+	fmt.Println("     Then regenerate: keel generate repository <name>")
+	return createFiles(buildSimpleFiles(typeRepository, componentName, baseDir, "repository.go.tmpl", "repository_test.go.tmpl", packageOverride))
+}
+
+func buildGormRepositoryFiles(componentName, baseDir, packageOverride string) []genFile {
+	data := generator.NewData(componentName)
+	if packageOverride != "" {
+		data.PackageName = generator.NewData(packageOverride).PackageName
+	}
+	return []genFile{
+		{
+			template: "templates/generate/repository/repository_gorm.go.tmpl",
+			dest:     filepath.Join(baseDir, data.SnakeName+"_repository.go"),
+			data:     data,
+		},
+		{
+			template: "templates/generate/repository/repository_gorm_test.go.tmpl",
+			dest:     filepath.Join(baseDir, data.SnakeName+"_repository_test.go"),
+			data:     data,
+		},
+	}
 }
 
 func generateStandalone(genType, componentName string, opts Options) error {
@@ -198,7 +236,7 @@ func generateInModule(genType, moduleName, componentName string) error {
 	case typeController:
 		return createFiles(buildSimpleFiles(genType, componentName, baseDir, "controller.go.tmpl", "controller_test.go.tmpl", moduleName))
 	case typeRepository:
-		return createFiles(buildSimpleFiles(genType, componentName, baseDir, "repository.go.tmpl", "repository_test.go.tmpl", moduleName))
+		return generateRepository(componentName, baseDir, moduleName)
 	default:
 		return fmt.Errorf("%s does not support module/name format", genType)
 	}
@@ -389,9 +427,10 @@ func regenerateModuleRegistry(moduleName string) error {
 	}
 
 	moduleData := generator.NewData(moduleName)
-	moduleData.Services = toRegistrations(services)
-	moduleData.Controllers = toRegistrations(controllers)
-	moduleData.Repositories = toRegistrations(repositories)
+	moduleData.Repositories = toRepositoryRegistrations(moduleName, repositories)
+	moduleData.Services = toServiceRegistrations(services, moduleData.Repositories)
+	moduleData.Controllers = toControllerRegistrations(controllers, moduleData.Services)
+	moduleData.UsesDatabase = hasDatabaseBackedRepository(moduleData.Repositories)
 
 	dest := moduleRegistryPath(moduleName)
 	alreadyExisted := generator.FileExists(dest)
@@ -428,15 +467,80 @@ func listComponents(dir, suffix string) ([]string, error) {
 	return items, nil
 }
 
-func toRegistrations(names []string) []generator.ComponentRegistration {
+func toRepositoryRegistrations(moduleName string, names []string) []generator.ComponentRegistration {
 	items := make([]generator.ComponentRegistration, 0, len(names))
 	for _, name := range names {
 		d := generator.NewData(name)
 		items = append(items, generator.ComponentRegistration{
-			Name:       name,
-			PascalName: d.PascalName,
-			VarName:    d.CamelName,
+			Name:             name,
+			PascalName:       d.PascalName,
+			VarName:          d.CamelName,
+			UsesDatabaseRepo: repositoryUsesDatabase(moduleName, name),
 		})
 	}
 	return items
+}
+
+func toServiceRegistrations(names []string, repositories []generator.ComponentRegistration) []generator.ComponentRegistration {
+	reposByName := make(map[string]generator.ComponentRegistration, len(repositories))
+	for _, repo := range repositories {
+		reposByName[repo.Name] = repo
+	}
+
+	items := make([]generator.ComponentRegistration, 0, len(names))
+	for _, name := range names {
+		d := generator.NewData(name)
+		item := generator.ComponentRegistration{
+			Name:       name,
+			PascalName: d.PascalName,
+			VarName:    d.CamelName,
+		}
+		if repo, ok := reposByName[name]; ok {
+			item.HasRepository = true
+			item.RepositoryVar = repo.VarName + "Repository"
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+func toControllerRegistrations(names []string, services []generator.ComponentRegistration) []generator.ComponentRegistration {
+	servicesByName := make(map[string]generator.ComponentRegistration, len(services))
+	for _, service := range services {
+		servicesByName[service.Name] = service
+	}
+
+	items := make([]generator.ComponentRegistration, 0, len(names))
+	for _, name := range names {
+		d := generator.NewData(name)
+		item := generator.ComponentRegistration{
+			Name:       name,
+			PascalName: d.PascalName,
+			VarName:    d.CamelName,
+		}
+		if service, ok := servicesByName[name]; ok {
+			item.HasService = true
+			item.ServiceVar = service.VarName + "Service"
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+func hasDatabaseBackedRepository(repositories []generator.ComponentRegistration) bool {
+	for _, repo := range repositories {
+		if repo.UsesDatabaseRepo {
+			return true
+		}
+	}
+	return false
+}
+
+func repositoryUsesDatabase(moduleName, repositoryName string) bool {
+	repoPath := filepath.Join(moduleDir(moduleName), repositoryName+"_repository.go")
+	content, err := os.ReadFile(repoPath)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(content), "\"github.com/slice-soft/ss-keel-gorm/database\"")
 }
