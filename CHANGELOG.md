@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/slice-soft/keel/compare/v1.1.1...v1.2.0) (2026-03-07)
+
+
+### Features
+
+* add build info retrieval and associated tests ([#7](https://github.com/slice-soft/keel/issues/7)) ([8747665](https://github.com/slice-soft/keel/commit/87476656fc3790aa5e08c13557a388a884530cbf))
+
 ## [1.1.1](https://github.com/slice-soft/keel/compare/v1.1.0...v1.1.1) (2026-03-07)
 
 
