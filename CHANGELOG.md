@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/slice-soft/keel/compare/v1.0.0...v1.1.0) (2026-03-07)
+
+
+### Features
+
+* add addon management functionality ([#3](https://github.com/slice-soft/keel/issues/3)) ([d87f64a](https://github.com/slice-soft/keel/commit/d87f64a7b1243377fc73e3fce9740e8af42f335b))
+
 ## 1.0.0 (2026-03-05)
 
 
