@@ -6,10 +6,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w
-      - -X github.com/slice-soft/keel/cmd.version={{.Version}}
-      - -X github.com/slice-soft/keel/cmd.commit={{.Commit}}
-      - -X github.com/slice-soft/keel/cmd.buildDate={{.Date}}
+      - -s -w -X github.com/slice-soft/keel/cmd.version={{.Version}} -X github.com/slice-soft/keel/cmd.commit={{.FullCommit}} -X github.com/slice-soft/keel/cmd.buildDate={{.Date}}
     goos:
       - linux
       - darwin
@@ -40,7 +37,7 @@ brews:
     install: |
       bin.install "keel"
     test: |
-      system "#{bin}/keel", "version"
+      system "#{bin}/keel", "--version"
 
 changelog:
   use: github
