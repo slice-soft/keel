@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/format"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/slice-soft/keel/internal/generator"
@@ -14,16 +15,32 @@ func ensureModuleRegisteredInMain(moduleName string) error {
 	if modulePath == "" {
 		return fmt.Errorf(invalidProjectMessage)
 	}
+	needsDatabase, err := moduleNeedsDatabase(moduleName)
+	if err != nil {
+		return err
+	}
 
 	data := generator.NewData(moduleName)
 	importPath := fmt.Sprintf("\"%s/internal/modules/%s\"", modulePath, data.PackageName)
 	useLine := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger))", data.PackageName)
+	useLineWithDB := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger, db))", data.PackageName)
 
 	return updateMainGo(func(content string) string {
 		content = ensureAppLoggerBootstrap(content)
+		if needsDatabase {
+			content = ensureDatabaseBootstrap(content)
+		}
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
+		if needsDatabase {
+			content = strings.ReplaceAll(content, useLine, useLineWithDB)
+			if !strings.Contains(content, useLineWithDB) {
+				content = addMainLine(content, useLineWithDB)
+			}
+			return content
+		}
+		content = strings.ReplaceAll(content, useLineWithDB, useLine)
 		if !strings.Contains(content, useLine) {
 			content = addMainLine(content, useLine)
 		}
@@ -61,7 +78,7 @@ func ensureStandaloneControllerRegisteredInMain(componentName string) error {
 
 	data := generator.NewData(componentName)
 	importPath := fmt.Sprintf("\"%s/internal/controllers\"", modulePath)
-	registerLine := fmt.Sprintf("\tapp.RegisterController(controllers.New%sController(appLogger))", data.PascalName)
+	registerLine := fmt.Sprintf("\tapp.RegisterController(controllers.New%sController(nil, appLogger))", data.PascalName)
 
 	return updateMainGo(func(content string) string {
 		content = ensureAppLoggerBootstrap(content)
@@ -224,6 +241,11 @@ func addMainLine(content, line string) string {
 }
 
 func ensureAppLoggerBootstrap(content string) string {
+	configImport := "\"github.com/slice-soft/ss-keel-core/config\""
+	if !strings.Contains(content, configImport) {
+		content = addImport(content, configImport)
+	}
+
 	loggerImport := "\"github.com/slice-soft/ss-keel-core/logger\""
 	if !strings.Contains(content, loggerImport) {
 		content = addImport(content, loggerImport)
@@ -235,4 +257,44 @@ func ensureAppLoggerBootstrap(content string) string {
 	}
 
 	return content
+}
+
+func ensureDatabaseBootstrap(content string) string {
+	databaseImport := "\"github.com/slice-soft/ss-keel-gorm/database\""
+	if !strings.Contains(content, databaseImport) {
+		content = addImport(content, databaseImport)
+	}
+
+	if strings.Contains(content, "database.New(") {
+		return content
+	}
+
+	setupLine := "\tdatabaseURL := config.GetEnvOrDefault(\"DATABASE_URL\", \"postgres://user:pass@localhost:5432/db?sslmode=disable\")\n\tdb, err := database.New(database.Config{\n\t\tEngine: database.EnginePostgres,\n\t\tDSN:    databaseURL,\n\t\tLogger: appLogger,\n\t})\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer db.Close()\n\tapp.RegisterHealthChecker(database.NewHealthChecker(db))"
+	return addMainLine(content, setupLine)
+}
+
+func moduleNeedsDatabase(moduleName string) (bool, error) {
+	repositories, err := listComponents(moduleDir(moduleName), "_repository.go")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	for _, repositoryName := range repositories {
+		repositoryPath := filepath.Join(moduleDir(moduleName), repositoryName+"_repository.go")
+		content, readErr := os.ReadFile(repositoryPath)
+		if readErr != nil {
+			if os.IsNotExist(readErr) {
+				continue
+			}
+			return false, readErr
+		}
+		if strings.Contains(string(content), "\"github.com/slice-soft/ss-keel-gorm/database\"") {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

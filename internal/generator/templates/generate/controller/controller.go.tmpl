@@ -1,16 +1,23 @@
 package {{.PackageName}}
 
 import (
+	"context"
+
 	"github.com/slice-soft/ss-keel-core/core"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
+type {{.PascalName}}ServiceContract interface {
+	Execute(ctx context.Context) error
+}
+
 type {{.PascalName}}Controller struct {
+	svc {{.PascalName}}ServiceContract
 	log *logger.Logger
 }
 
-func New{{.PascalName}}Controller(log *logger.Logger) *{{.PascalName}}Controller {
-	return &{{.PascalName}}Controller{log: log}
+func New{{.PascalName}}Controller(svc {{.PascalName}}ServiceContract, log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{svc: svc, log: log}
 }
 
 func (c *{{.PascalName}}Controller) Routes() []core.Route {
@@ -22,6 +29,11 @@ func (c *{{.PascalName}}Controller) Routes() []core.Route {
 }
 
 func (c *{{.PascalName}}Controller) Handle(ctx *core.Ctx) error {
+	if c.svc != nil {
+		if err := c.svc.Execute(context.Background()); err != nil && c.log != nil {
+			c.log.Warn("{{.KebabName}} service returned an error: %v", err)
+		}
+	}
 	if c.log != nil {
 		c.log.Info("handling {{.KebabName}} controller request")
 	}

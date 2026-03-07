@@ -98,8 +98,11 @@ func TestGenerateModuleDefaultsAndAlias(t *testing.T) {
 	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_service.go"))
 	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_controller.go"))
 	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "users", "users_module.go"))
-	if !strings.Contains(moduleContent, "usersController := NewUsersController(m.log)") {
-		t.Fatalf("expected controller variable suffix to avoid collisions, got:\\n%s", moduleContent)
+	if !strings.Contains(moduleContent, "usersService := NewUsersService(m.log)") {
+		t.Fatalf("expected service registration in module, got:\\n%s", moduleContent)
+	}
+	if !strings.Contains(moduleContent, "usersController := NewUsersController(usersService, m.log)") {
+		t.Fatalf("expected controller to receive service dependency, got:\\n%s", moduleContent)
 	}
 
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
@@ -131,6 +134,71 @@ func TestGenerateTransactionalModuleWithRepository(t *testing.T) {
 	assertFile(t, filepath.Join(root, "internal", "modules", "payments", "payments_repository.go"))
 	if _, err := os.Stat(filepath.Join(root, "internal", "modules", "payments", "payments_controller.go")); err == nil {
 		t.Fatal("did not expect controller for transactional module")
+	}
+}
+
+func TestGenerateModuleWithGormRepositoryWiresDatabaseInMain(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+	enableGormAddonInGoMod(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	opts := Options{WithRepository: true}
+	if err := execute("module", "payments", opts); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+
+	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_module.go"))
+	if !strings.Contains(moduleContent, "paymentsRepository := NewPaymentsRepository(m.log, m.db)") {
+		t.Fatalf("expected module to wire repository with logger and db, got:\n%s", moduleContent)
+	}
+	if !strings.Contains(moduleContent, "paymentsService := NewPaymentsServiceWithRepository(paymentsRepository, m.log)") {
+		t.Fatalf("expected module to wire service with repository, got:\n%s", moduleContent)
+	}
+	if !strings.Contains(moduleContent, "paymentsController := NewPaymentsController(paymentsService, m.log)") {
+		t.Fatalf("expected module to wire controller with service, got:\n%s", moduleContent)
+	}
+
+	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
+	if !strings.Contains(mainContent, "\"github.com/slice-soft/ss-keel-gorm/database\"") {
+		t.Fatalf("expected database import in main.go, got:\n%s", mainContent)
+	}
+	if !strings.Contains(mainContent, "db, err := database.New(database.Config{") {
+		t.Fatalf("expected database bootstrap in main.go, got:\n%s", mainContent)
+	}
+	if !strings.Contains(mainContent, "app.Use(payments.NewModule(appLogger, db))") {
+		t.Fatalf("expected module registration with db in main.go, got:\n%s", mainContent)
+	}
+}
+
+func TestGenerateRepositoryInModuleRewiresMainWithDatabase(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+	enableGormAddonInGoMod(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	if err := execute("module", "billing", Options{}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+	if err := execute("repository", "billing/billing", Options{}); err != nil {
+		t.Fatalf("generate repository failed: %v", err)
+	}
+
+	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
+	if !strings.Contains(mainContent, "app.Use(billing.NewModule(appLogger, db))") {
+		t.Fatalf("expected module registration to be rewired with db, got:\n%s", mainContent)
 	}
 }
 
@@ -355,4 +423,12 @@ func mustRead(t *testing.T, path string) string {
 		t.Fatalf("read failed (%s): %v", path, err)
 	}
 	return string(b)
+}
+
+func enableGormAddonInGoMod(t *testing.T, root string) {
+	t.Helper()
+	mustWrite(t, filepath.Join(root, "go.mod"), `module example.com/app
+
+require github.com/slice-soft/ss-keel-gorm v0.0.0
+`)
 }

@@ -7,11 +7,19 @@ import (
 )
 
 type {{.PascalName}}Service struct {
-	log *logger.Logger
+	repository any
+	log        *logger.Logger
 }
 
 func New{{.PascalName}}Service(log *logger.Logger) *{{.PascalName}}Service {
 	return &{{.PascalName}}Service{log: log}
+}
+
+func New{{.PascalName}}ServiceWithRepository(repository any, log *logger.Logger) *{{.PascalName}}Service {
+	return &{{.PascalName}}Service{
+		repository: repository,
+		log:        log,
+	}
 }
 
 func (s *{{.PascalName}}Service) Execute(ctx context.Context) error {
