@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/slice-soft/keel/compare/v1.1.0...v1.1.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* correct ldflags and update version command in goreleaser configuration ([#5](https://github.com/slice-soft/keel/issues/5)) ([c111a99](https://github.com/slice-soft/keel/commit/c111a992e8f91614bda9438d8dd4fd63e4f0a599))
+
 ## [1.1.0](https://github.com/slice-soft/keel/compare/v1.0.0...v1.1.0) (2026-03-07)
 
 
