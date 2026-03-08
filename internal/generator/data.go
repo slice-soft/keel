@@ -19,6 +19,8 @@ type Data struct {
 	SnakeName          string // users
 	CoreVersion        string // github.com/slice-soft/ss-keel-core v1.2.3
 	UsesDatabase       bool
+	UsesGormDatabase   bool
+	UsesMongoDatabase  bool
 	Services           []ComponentRegistration
 	Controllers        []ComponentRegistration
 	Repositories       []ComponentRegistration
@@ -34,6 +36,8 @@ type ComponentRegistration struct {
 	HasService       bool
 	ServiceVar       string
 	UsesDatabaseRepo bool
+	UsesGormRepo     bool
+	UsesMongoRepo    bool
 }
 
 // NewData builds Data from a name in any supported format.

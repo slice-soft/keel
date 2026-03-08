@@ -21,13 +21,30 @@ const (
 	typeEvent      = "event"
 	typeChecker    = "checker"
 	typeHook       = "hook"
+
+	gormAddonModulePath  = "github.com/slice-soft/ss-keel-gorm"
+	mongoAddonModulePath = "github.com/slice-soft/ss-keel-mongo"
+
+	gormRepositoryImportPath  = "\"github.com/slice-soft/ss-keel-gorm/database\""
+	mongoRepositoryImportPath = "\"github.com/slice-soft/ss-keel-mongo/mongo\""
+)
+
+type repositoryBackend string
+
+const (
+	repositoryBackendStub  repositoryBackend = "stub"
+	repositoryBackendGorm  repositoryBackend = "gorm"
+	repositoryBackendMongo repositoryBackend = "mongo"
 )
 
 type Options struct {
 	TransactionalModule bool
 	WithRepository      bool
 	ControllerInMain    bool
+	RepositoryBackend   string
 }
+
+var promptRepositoryBackendFn = promptRepositoryBackend
 
 var supportedTypes = map[string]struct{}{
 	typeModule: {}, typeService: {}, typeController: {}, typeRepository: {},
@@ -82,11 +99,29 @@ func execute(genType, rawName string, opts Options) error {
 		return err
 	}
 
+	if opts.RepositoryBackend != "" {
+		if resolvedType == typeModule && !opts.WithRepository {
+			return fmt.Errorf("--repository-db requires --with-repository when generating a module")
+		}
+		if resolvedType != typeModule && resolvedType != typeRepository {
+			return fmt.Errorf("--repository-db is only valid for repository generation")
+		}
+	}
+
+	repositoryChoice := repositoryBackendStub
+	requiresRepositoryChoice := (resolvedType == typeModule && opts.WithRepository) || (resolvedType == typeRepository && !parsed.standalone)
+	if requiresRepositoryChoice {
+		repositoryChoice, err = resolveRepositoryBackend(opts.RepositoryBackend)
+		if err != nil {
+			return err
+		}
+	}
+
 	if resolvedType == typeModule {
 		if !parsed.standalone {
 			return fmt.Errorf("module name must not contain '/'")
 		}
-		if err := generateModule(parsed.componentName, opts); err != nil {
+		if err := generateModule(parsed.componentName, opts, repositoryChoice); err != nil {
 			return err
 		}
 		return ensureModuleRegisteredInMain(parsed.componentName)
@@ -106,7 +141,7 @@ func execute(genType, rawName string, opts Options) error {
 	if err := ensureModuleExists(parsed.moduleName); err != nil {
 		return err
 	}
-	if err := generateInModule(resolvedType, parsed.moduleName, parsed.componentName); err != nil {
+	if err := generateInModule(resolvedType, parsed.moduleName, parsed.componentName, repositoryChoice); err != nil {
 		return err
 	}
 	if err := regenerateModuleRegistry(parsed.moduleName); err != nil {
@@ -126,7 +161,7 @@ func resolveType(raw string) (string, error) {
 	return key, nil
 }
 
-func generateModule(name string, opts Options) error {
+func generateModule(name string, opts Options, repositoryChoice repositoryBackend) error {
 	if err := ensureModuleExists(name); err != nil {
 		return err
 	}
@@ -136,12 +171,7 @@ func generateModule(name string, opts Options) error {
 		files = append(files, buildSimpleFiles(typeController, name, moduleDir(name), "controller.go.tmpl", "controller_test.go.tmpl", name)...)
 	}
 	if opts.WithRepository {
-		repoFiles := buildGormRepositoryFiles(name, moduleDir(name), name)
-		if !generator.IsAddonInstalled("github.com/slice-soft/ss-keel-gorm") {
-			fmt.Println("  ⚠  ss-keel-gorm not found in go.mod — generated stub repository")
-			fmt.Println("     Install the GORM adapter with: keel add gorm")
-			repoFiles = buildSimpleFiles(typeRepository, name, moduleDir(name), "repository.go.tmpl", "repository_test.go.tmpl", name)
-		}
+		repoFiles := repositoryFilesForBackend(name, moduleDir(name), name, repositoryChoice, false)
 		files = append(files, repoFiles...)
 	}
 
@@ -158,14 +188,8 @@ func generateModule(name string, opts Options) error {
 	return regenerateModuleRegistry(name)
 }
 
-func generateRepository(componentName, baseDir, packageOverride string) error {
-	if generator.IsAddonInstalled("github.com/slice-soft/ss-keel-gorm") {
-		return createFiles(buildGormRepositoryFiles(componentName, baseDir, packageOverride))
-	}
-	fmt.Println("  ⚠  ss-keel-gorm not found in go.mod — generated stub repository")
-	fmt.Println("     Install the GORM adapter with: keel add gorm")
-	fmt.Println("     Then regenerate: keel generate repository <name>")
-	return createFiles(buildSimpleFiles(typeRepository, componentName, baseDir, "repository.go.tmpl", "repository_test.go.tmpl", packageOverride))
+func generateRepository(componentName, baseDir, packageOverride string, repositoryChoice repositoryBackend) error {
+	return createFiles(repositoryFilesForBackend(componentName, baseDir, packageOverride, repositoryChoice, true))
 }
 
 func buildGormRepositoryFiles(componentName, baseDir, packageOverride string) []genFile {
@@ -181,6 +205,25 @@ func buildGormRepositoryFiles(componentName, baseDir, packageOverride string) []
 		},
 		{
 			template: "templates/generate/repository/repository_gorm_test.go.tmpl",
+			dest:     filepath.Join(baseDir, data.SnakeName+"_repository_test.go"),
+			data:     data,
+		},
+	}
+}
+
+func buildMongoRepositoryFiles(componentName, baseDir, packageOverride string) []genFile {
+	data := generator.NewData(componentName)
+	if packageOverride != "" {
+		data.PackageName = generator.NewData(packageOverride).PackageName
+	}
+	return []genFile{
+		{
+			template: "templates/generate/repository/repository_mongo.go.tmpl",
+			dest:     filepath.Join(baseDir, data.SnakeName+"_repository.go"),
+			data:     data,
+		},
+		{
+			template: "templates/generate/repository/repository_mongo_test.go.tmpl",
 			dest:     filepath.Join(baseDir, data.SnakeName+"_repository_test.go"),
 			data:     data,
 		},
@@ -228,7 +271,7 @@ func generateStandalone(genType, componentName string, opts Options) error {
 	}
 }
 
-func generateInModule(genType, moduleName, componentName string) error {
+func generateInModule(genType, moduleName, componentName string, repositoryChoice repositoryBackend) error {
 	baseDir := moduleDir(moduleName)
 	switch genType {
 	case typeService:
@@ -236,10 +279,68 @@ func generateInModule(genType, moduleName, componentName string) error {
 	case typeController:
 		return createFiles(buildSimpleFiles(genType, componentName, baseDir, "controller.go.tmpl", "controller_test.go.tmpl", moduleName))
 	case typeRepository:
-		return generateRepository(componentName, baseDir, moduleName)
+		return generateRepository(componentName, baseDir, moduleName, repositoryChoice)
 	default:
 		return fmt.Errorf("%s does not support module/name format", genType)
 	}
+}
+
+func resolveRepositoryBackend(raw string) (repositoryBackend, error) {
+	if strings.TrimSpace(raw) != "" {
+		return parseRepositoryBackend(raw)
+	}
+
+	hasGorm := generator.IsAddonInstalled(gormAddonModulePath)
+	hasMongo := generator.IsAddonInstalled(mongoAddonModulePath)
+
+	switch {
+	case hasGorm && hasMongo:
+		return promptRepositoryBackendFn()
+	case hasGorm:
+		return repositoryBackendGorm, nil
+	case hasMongo:
+		return repositoryBackendMongo, nil
+	default:
+		return repositoryBackendStub, nil
+	}
+}
+
+func parseRepositoryBackend(raw string) (repositoryBackend, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case string(repositoryBackendGorm):
+		return repositoryBackendGorm, nil
+	case string(repositoryBackendMongo), "mongodb":
+		return repositoryBackendMongo, nil
+	case "", string(repositoryBackendStub), "none":
+		return repositoryBackendStub, nil
+	default:
+		return "", fmt.Errorf("unsupported repository backend: %s (use gorm or mongo)", raw)
+	}
+}
+
+func repositoryFilesForBackend(componentName, baseDir, packageOverride string, repositoryChoice repositoryBackend, includeRegenerateHint bool) []genFile {
+	switch repositoryChoice {
+	case repositoryBackendGorm:
+		if generator.IsAddonInstalled(gormAddonModulePath) {
+			return buildGormRepositoryFiles(componentName, baseDir, packageOverride)
+		}
+		fmt.Println("  ⚠  ss-keel-gorm not found in go.mod — generated stub repository")
+		fmt.Println("     Install the GORM adapter with: keel add gorm")
+		if includeRegenerateHint {
+			fmt.Println("     Then regenerate with: keel generate repository <module/name> --repository-db=gorm")
+		}
+	case repositoryBackendMongo:
+		if generator.IsAddonInstalled(mongoAddonModulePath) {
+			return buildMongoRepositoryFiles(componentName, baseDir, packageOverride)
+		}
+		fmt.Println("  ⚠  ss-keel-mongo not found in go.mod — generated stub repository")
+		fmt.Println("     Install the Mongo adapter with: keel add mongo")
+		if includeRegenerateHint {
+			fmt.Println("     Then regenerate with: keel generate repository <module/name> --repository-db=mongo")
+		}
+	}
+
+	return buildSimpleFiles(typeRepository, componentName, baseDir, "repository.go.tmpl", "repository_test.go.tmpl", packageOverride)
 }
 
 func ensureModuleExists(name string) error {
@@ -430,7 +531,9 @@ func regenerateModuleRegistry(moduleName string) error {
 	moduleData.Repositories = toRepositoryRegistrations(moduleName, repositories)
 	moduleData.Services = toServiceRegistrations(services, moduleData.Repositories)
 	moduleData.Controllers = toControllerRegistrations(controllers, moduleData.Services)
-	moduleData.UsesDatabase = hasDatabaseBackedRepository(moduleData.Repositories)
+	moduleData.UsesGormDatabase = hasGormBackedRepository(moduleData.Repositories)
+	moduleData.UsesMongoDatabase = hasMongoBackedRepository(moduleData.Repositories)
+	moduleData.UsesDatabase = moduleData.UsesGormDatabase || moduleData.UsesMongoDatabase
 
 	dest := moduleRegistryPath(moduleName)
 	alreadyExisted := generator.FileExists(dest)
@@ -471,11 +574,14 @@ func toRepositoryRegistrations(moduleName string, names []string) []generator.Co
 	items := make([]generator.ComponentRegistration, 0, len(names))
 	for _, name := range names {
 		d := generator.NewData(name)
+		backend := repositoryBackendInModule(moduleName, name)
 		items = append(items, generator.ComponentRegistration{
 			Name:             name,
 			PascalName:       d.PascalName,
 			VarName:          d.CamelName,
-			UsesDatabaseRepo: repositoryUsesDatabase(moduleName, name),
+			UsesDatabaseRepo: backend != repositoryBackendStub,
+			UsesGormRepo:     backend == repositoryBackendGorm,
+			UsesMongoRepo:    backend == repositoryBackendMongo,
 		})
 	}
 	return items
@@ -527,20 +633,39 @@ func toControllerRegistrations(names []string, services []generator.ComponentReg
 	return items
 }
 
-func hasDatabaseBackedRepository(repositories []generator.ComponentRegistration) bool {
+func hasGormBackedRepository(repositories []generator.ComponentRegistration) bool {
 	for _, repo := range repositories {
-		if repo.UsesDatabaseRepo {
+		if repo.UsesGormRepo {
 			return true
 		}
 	}
 	return false
 }
 
-func repositoryUsesDatabase(moduleName, repositoryName string) bool {
+func hasMongoBackedRepository(repositories []generator.ComponentRegistration) bool {
+	for _, repo := range repositories {
+		if repo.UsesMongoRepo {
+			return true
+		}
+	}
+	return false
+}
+
+func repositoryBackendInModule(moduleName, repositoryName string) repositoryBackend {
 	repoPath := filepath.Join(moduleDir(moduleName), repositoryName+"_repository.go")
 	content, err := os.ReadFile(repoPath)
 	if err != nil {
-		return false
+		return repositoryBackendStub
 	}
-	return strings.Contains(string(content), "\"github.com/slice-soft/ss-keel-gorm/database\"")
+	return repositoryBackendFromContent(string(content))
+}
+
+func repositoryBackendFromContent(content string) repositoryBackend {
+	if strings.Contains(content, gormRepositoryImportPath) {
+		return repositoryBackendGorm
+	}
+	if strings.Contains(content, mongoRepositoryImportPath) {
+		return repositoryBackendMongo
+	}
+	return repositoryBackendStub
 }

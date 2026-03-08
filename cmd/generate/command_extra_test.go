@@ -17,7 +17,7 @@ func TestCommandConfiguration(t *testing.T) {
 		t.Fatalf("expected RunE to be configured")
 	}
 
-	requiredFlags := []string{"transactional", "with-repository", "in-main"}
+	requiredFlags := []string{"transactional", "with-repository", "in-main", "repository-db"}
 	for _, name := range requiredFlags {
 		if cmd.Flags().Lookup(name) == nil {
 			t.Fatalf("expected flag %q to exist", name)
@@ -30,16 +30,19 @@ func TestRunGenerateDelegatesToExecute(t *testing.T) {
 	previousTransactional := transactionalModule
 	previousWithRepository := withRepository
 	previousInMain := inMain
+	previousRepositoryDB := repositoryDB
 	t.Cleanup(func() {
 		executeFn = previousExecute
 		transactionalModule = previousTransactional
 		withRepository = previousWithRepository
 		inMain = previousInMain
+		repositoryDB = previousRepositoryDB
 	})
 
 	transactionalModule = true
 	withRepository = true
 	inMain = true
+	repositoryDB = "mongo"
 
 	called := false
 	executeFn = func(genType, rawName string, opts Options) error {
@@ -49,6 +52,9 @@ func TestRunGenerateDelegatesToExecute(t *testing.T) {
 		}
 		if !opts.TransactionalModule || !opts.WithRepository || !opts.ControllerInMain {
 			t.Fatalf("unexpected opts: %#v", opts)
+		}
+		if opts.RepositoryBackend != "mongo" {
+			t.Fatalf("unexpected repository backend: %#v", opts.RepositoryBackend)
 		}
 		return nil
 	}
@@ -88,7 +94,7 @@ func TestGenerateUnsupportedBranches(t *testing.T) {
 		t.Fatalf("expected generateStandalone to reject unsupported standalone module generation")
 	}
 
-	if err := generateInModule(typeScheduler, "users", "nightly"); err == nil {
+	if err := generateInModule(typeScheduler, "users", "nightly", repositoryBackendStub); err == nil {
 		t.Fatalf("expected generateInModule to reject scheduler in module format")
 	}
 }

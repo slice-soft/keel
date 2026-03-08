@@ -1,0 +1,30 @@
+package {{.PackageName}}
+
+import (
+	"github.com/slice-soft/ss-keel-core/logger"
+	"github.com/slice-soft/ss-keel-mongo/mongo"
+)
+
+type {{.PascalName}}Entity struct {
+	ID string `bson:"_id,omitempty" json:"id"`
+}
+
+// {{.PascalName}}Repository wraps MongoRepository and is ready for CRUD operations.
+// Add custom document queries below as needed.
+type {{.PascalName}}Repository struct {
+	*mongo.MongoRepository[{{.PascalName}}Entity, string]
+	log *logger.Logger
+}
+
+func New{{.PascalName}}Repository(log *logger.Logger, client *mongo.Client) *{{.PascalName}}Repository {
+	return &{{.PascalName}}Repository{
+		MongoRepository: mongo.NewRepository[{{.PascalName}}Entity, string](client, "{{.SnakeName}}", mongo.WithObjectIDHex[{{.PascalName}}Entity]()),
+		log:             log,
+	}
+}
+
+// Add custom queries here. Example:
+//
+//	func (r *{{.PascalName}}Repository) FindByEmail(ctx context.Context, email string) (*{{.PascalName}}Entity, error) {
+//	    return r.FindOneByFilter(ctx, bson.M{"email": email})
+//	}

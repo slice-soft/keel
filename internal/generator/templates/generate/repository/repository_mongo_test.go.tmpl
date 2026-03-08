@@ -1,0 +1,10 @@
+package {{.PackageName}}
+
+import "testing"
+
+func Test{{.PascalName}}RepositoryStruct(t *testing.T) {
+	repo := New{{.PascalName}}Repository(nil, nil)
+	if repo == nil {
+		t.Fatal("expected repository instance")
+	}
+}
