@@ -15,9 +15,13 @@ func applyBuildInfo() {
 	if !ok {
 		return
 	}
+
+	hasRealVersion := false
 	if v := info.Main.Version; v != "" && v != "(devel)" {
 		version = v
+		hasRealVersion = true
 	}
+
 	for _, s := range info.Settings {
 		switch s.Key {
 		case "vcs.revision":
@@ -28,6 +32,17 @@ func applyBuildInfo() {
 			if s.Value != "" {
 				buildDate = s.Value
 			}
+		}
+	}
+
+	// go install downloads from the module proxy, which strips git metadata.
+	// If we have a real version but no VCS info, mark them explicitly as N/A.
+	if hasRealVersion {
+		if commit == "none" {
+			commit = "N/A"
+		}
+		if buildDate == "unknown" {
+			buildDate = "N/A"
 		}
 	}
 }

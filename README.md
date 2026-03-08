@@ -24,13 +24,12 @@ architecture, automatic OpenAPI, and built-in validation.
 ## Installation
 
 ```bash
-# Using Go install
-go install github.com/slice-soft/keel@latest
+# Homebrew (recommended)
+brew tap slice-soft/tap
+brew install slice-soft/tap/keel
 
-# Or download from releases
-curl -sSL https://github.com/slice-soft/keel/releases/latest/download/keel-$(uname -s)-$(uname -m) -o keel
-chmod +x keel
-sudo mv keel /usr/local/bin/
+# Or with Go install
+go install github.com/slice-soft/keel@latest
 ```
 
 ## Quick Start
