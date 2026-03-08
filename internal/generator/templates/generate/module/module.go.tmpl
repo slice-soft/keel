@@ -3,23 +3,32 @@ package {{.PackageName}}
 import (
 	"github.com/slice-soft/ss-keel-core/core"
 	"github.com/slice-soft/ss-keel-core/logger"
-{{- if .UsesDatabase }}
+{{- if .UsesGormDatabase }}
 	"github.com/slice-soft/ss-keel-gorm/database"
+{{- end }}
+{{- if .UsesMongoDatabase }}
+	"github.com/slice-soft/ss-keel-mongo/mongo"
 {{- end }}
 )
 
 type Module struct {
 	log *logger.Logger
-{{- if .UsesDatabase }}
+{{- if .UsesGormDatabase }}
 	db  *database.DBinstance
+{{- end }}
+{{- if .UsesMongoDatabase }}
+	mongoClient *mongo.Client
 {{- end }}
 }
 
-func NewModule(log *logger.Logger{{- if .UsesDatabase }}, db *database.DBinstance{{- end }}) *Module {
+func NewModule(log *logger.Logger{{- if .UsesGormDatabase }}, db *database.DBinstance{{- end }}{{- if .UsesMongoDatabase }}, mongoClient *mongo.Client{{- end }}) *Module {
 	return &Module{
 		log: log,
-{{- if .UsesDatabase }}
+{{- if .UsesGormDatabase }}
 		db:  db,
+{{- end }}
+{{- if .UsesMongoDatabase }}
+		mongoClient: mongoClient,
 {{- end }}
 	}
 }
@@ -27,10 +36,12 @@ func NewModule(log *logger.Logger{{- if .UsesDatabase }}, db *database.DBinstanc
 func (m *Module) Register(app *core.App) {
 {{- if .Repositories }}
 {{- range .Repositories }}
-{{- if .UsesDatabaseRepo }}
-	{{.VarName}}Repository := New{{.PascalName}}Repository(m.log, m.db)
+{{- if .UsesGormRepo }}
+		{{.VarName}}Repository := New{{.PascalName}}Repository(m.log, m.db)
+{{- else if .UsesMongoRepo }}
+		{{.VarName}}Repository := New{{.PascalName}}Repository(m.log, m.mongoClient)
 {{- else }}
-	{{.VarName}}Repository := New{{.PascalName}}Repository(m.log)
+		{{.VarName}}Repository := New{{.PascalName}}Repository(m.log)
 {{- end }}
 {{- end }}
 {{- end }}

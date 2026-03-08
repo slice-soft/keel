@@ -177,6 +177,43 @@ func TestGenerateModuleWithGormRepositoryWiresDatabaseInMain(t *testing.T) {
 	}
 }
 
+func TestGenerateModuleWithMongoRepositoryWiresDatabaseInMain(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+	enableMongoAddonInGoMod(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	opts := Options{WithRepository: true, RepositoryBackend: "mongo"}
+	if err := execute("module", "payments", opts); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+
+	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_module.go"))
+	if !strings.Contains(moduleContent, "paymentsRepository := NewPaymentsRepository(m.log, m.mongoClient)") {
+		t.Fatalf("expected module to wire repository with logger and mongo client, got:\n%s", moduleContent)
+	}
+	if !strings.Contains(moduleContent, "\"github.com/slice-soft/ss-keel-mongo/mongo\"") {
+		t.Fatalf("expected mongo import in module, got:\n%s", moduleContent)
+	}
+
+	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
+	if !strings.Contains(mainContent, "\"github.com/slice-soft/ss-keel-mongo/mongo\"") {
+		t.Fatalf("expected mongo import in main.go, got:\n%s", mainContent)
+	}
+	if !strings.Contains(mainContent, "mongoClient, err := mongo.New(mongo.Config{") {
+		t.Fatalf("expected mongo bootstrap in main.go, got:\n%s", mainContent)
+	}
+	if !strings.Contains(mainContent, "app.Use(payments.NewModule(appLogger, mongoClient))") {
+		t.Fatalf("expected module registration with mongo client in main.go, got:\n%s", mainContent)
+	}
+}
+
 func TestGenerateRepositoryInModuleRewiresMainWithDatabase(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
@@ -199,6 +236,67 @@ func TestGenerateRepositoryInModuleRewiresMainWithDatabase(t *testing.T) {
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
 	if !strings.Contains(mainContent, "app.Use(billing.NewModule(appLogger, db))") {
 		t.Fatalf("expected module registration to be rewired with db, got:\n%s", mainContent)
+	}
+}
+
+func TestGenerateRepositoryWithBothAddonsPromptsBackendSelection(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+	enableBothAddonsInGoMod(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	previousPrompt := promptRepositoryBackendFn
+	t.Cleanup(func() {
+		promptRepositoryBackendFn = previousPrompt
+	})
+
+	promptCalled := false
+	promptRepositoryBackendFn = func() (repositoryBackend, error) {
+		promptCalled = true
+		return repositoryBackendMongo, nil
+	}
+
+	if err := execute("module", "billing", Options{}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+	if err := execute("repository", "billing/billing", Options{}); err != nil {
+		t.Fatalf("generate repository failed: %v", err)
+	}
+	if !promptCalled {
+		t.Fatal("expected repository backend prompt to be used when both addons are installed")
+	}
+
+	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "billing_repository.go"))
+	if !strings.Contains(repositoryContent, "\"github.com/slice-soft/ss-keel-mongo/mongo\"") {
+		t.Fatalf("expected mongo repository template, got:\n%s", repositoryContent)
+	}
+
+	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
+	if !strings.Contains(mainContent, "app.Use(billing.NewModule(appLogger, mongoClient))") {
+		t.Fatalf("expected module registration to use mongo client, got:\n%s", mainContent)
+	}
+}
+
+func TestRepositoryBackendValidationForNonRepositoryGeneration(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	err := execute("service", "users", Options{RepositoryBackend: "mongo"})
+	if err == nil || !strings.Contains(err.Error(), "--repository-db is only valid for repository generation") {
+		t.Fatalf("expected repository backend validation error, got: %v", err)
 	}
 }
 
@@ -430,5 +528,24 @@ func enableGormAddonInGoMod(t *testing.T, root string) {
 	mustWrite(t, filepath.Join(root, "go.mod"), `module example.com/app
 
 require github.com/slice-soft/ss-keel-gorm v0.0.0
-`)
+	`)
+}
+
+func enableMongoAddonInGoMod(t *testing.T, root string) {
+	t.Helper()
+	mustWrite(t, filepath.Join(root, "go.mod"), `module example.com/app
+
+require github.com/slice-soft/ss-keel-mongo v0.0.0
+	`)
+}
+
+func enableBothAddonsInGoMod(t *testing.T, root string) {
+	t.Helper()
+	mustWrite(t, filepath.Join(root, "go.mod"), `module example.com/app
+
+require (
+	github.com/slice-soft/ss-keel-gorm v0.0.0
+	github.com/slice-soft/ss-keel-mongo v0.0.0
+)
+	`)
 }

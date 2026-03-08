@@ -10,6 +10,11 @@ import (
 	"github.com/slice-soft/keel/internal/generator"
 )
 
+type moduleDatabaseNeeds struct {
+	gorm  bool
+	mongo bool
+}
+
 func ensureModuleRegisteredInMain(moduleName string) error {
 	modulePath := generator.ReadModuleName()
 	if modulePath == "" {
@@ -23,26 +28,42 @@ func ensureModuleRegisteredInMain(moduleName string) error {
 	data := generator.NewData(moduleName)
 	importPath := fmt.Sprintf("\"%s/internal/modules/%s\"", modulePath, data.PackageName)
 	useLine := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger))", data.PackageName)
-	useLineWithDB := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger, db))", data.PackageName)
+	useLineWithGormDB := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger, db))", data.PackageName)
+	useLineWithMongoDB := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger, mongoClient))", data.PackageName)
+	useLineWithBothDBs := fmt.Sprintf("\tapp.Use(%s.NewModule(appLogger, db, mongoClient))", data.PackageName)
+
+	targetUseLine := useLine
+	switch {
+	case needsDatabase.gorm && needsDatabase.mongo:
+		targetUseLine = useLineWithBothDBs
+	case needsDatabase.gorm:
+		targetUseLine = useLineWithGormDB
+	case needsDatabase.mongo:
+		targetUseLine = useLineWithMongoDB
+	}
 
 	return updateMainGo(func(content string) string {
 		content = ensureAppLoggerBootstrap(content)
-		if needsDatabase {
-			content = ensureDatabaseBootstrap(content)
+		if needsDatabase.gorm {
+			content = ensureGormDatabaseBootstrap(content)
+		}
+		if needsDatabase.mongo {
+			content = ensureMongoDatabaseBootstrap(content)
 		}
 		if !strings.Contains(content, importPath) {
 			content = addImport(content, importPath)
 		}
-		if needsDatabase {
-			content = strings.ReplaceAll(content, useLine, useLineWithDB)
-			if !strings.Contains(content, useLineWithDB) {
-				content = addMainLine(content, useLineWithDB)
+
+		useLineCandidates := []string{useLine, useLineWithGormDB, useLineWithMongoDB, useLineWithBothDBs}
+		for _, candidate := range useLineCandidates {
+			if candidate == targetUseLine {
+				continue
 			}
-			return content
+			content = strings.ReplaceAll(content, candidate, targetUseLine)
 		}
-		content = strings.ReplaceAll(content, useLineWithDB, useLine)
-		if !strings.Contains(content, useLine) {
-			content = addMainLine(content, useLine)
+
+		if !strings.Contains(content, targetUseLine) {
+			content = addMainLine(content, targetUseLine)
 		}
 		return content
 	})
@@ -259,7 +280,7 @@ func ensureAppLoggerBootstrap(content string) string {
 	return content
 }
 
-func ensureDatabaseBootstrap(content string) string {
+func ensureGormDatabaseBootstrap(content string) string {
 	databaseImport := "\"github.com/slice-soft/ss-keel-gorm/database\""
 	if !strings.Contains(content, databaseImport) {
 		content = addImport(content, databaseImport)
@@ -273,13 +294,29 @@ func ensureDatabaseBootstrap(content string) string {
 	return addMainLine(content, setupLine)
 }
 
-func moduleNeedsDatabase(moduleName string) (bool, error) {
+func ensureMongoDatabaseBootstrap(content string) string {
+	mongoImport := "\"github.com/slice-soft/ss-keel-mongo/mongo\""
+	if !strings.Contains(content, mongoImport) {
+		content = addImport(content, mongoImport)
+	}
+
+	if strings.Contains(content, "mongo.New(") {
+		return content
+	}
+
+	setupLine := "\tmongoURI := config.GetEnvOrDefault(\"MONGO_URI\", \"mongodb://localhost:27017\")\n\tmongoDatabase := config.GetEnvOrDefault(\"MONGO_DATABASE\", \"app\")\n\n\tmongoClient, err := mongo.New(mongo.Config{\n\t\tURI:      mongoURI,\n\t\tDatabase: mongoDatabase,\n\t\tLogger:   appLogger,\n\t})\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer mongoClient.Close()\n\tapp.RegisterHealthChecker(mongo.NewHealthChecker(mongoClient))"
+	return addMainLine(content, setupLine)
+}
+
+func moduleNeedsDatabase(moduleName string) (moduleDatabaseNeeds, error) {
+	needs := moduleDatabaseNeeds{}
+
 	repositories, err := listComponents(moduleDir(moduleName), "_repository.go")
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
+			return needs, nil
 		}
-		return false, err
+		return needs, err
 	}
 
 	for _, repositoryName := range repositories {
@@ -289,12 +326,19 @@ func moduleNeedsDatabase(moduleName string) (bool, error) {
 			if os.IsNotExist(readErr) {
 				continue
 			}
-			return false, readErr
+			return needs, readErr
 		}
-		if strings.Contains(string(content), "\"github.com/slice-soft/ss-keel-gorm/database\"") {
-			return true, nil
+		switch repositoryBackendFromContent(string(content)) {
+		case repositoryBackendGorm:
+			needs.gorm = true
+		case repositoryBackendMongo:
+			needs.mongo = true
+		}
+
+		if needs.gorm && needs.mongo {
+			break
 		}
 	}
 
-	return false, nil
+	return needs, nil
 }
