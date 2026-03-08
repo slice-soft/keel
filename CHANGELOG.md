@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/slice-soft/keel/compare/v1.2.0...v1.2.1) (2026-03-08)
+
+
+### Bug Fixes
+
+* update installation instructions and enhance build info handling ([#9](https://github.com/slice-soft/keel/issues/9)) ([5887230](https://github.com/slice-soft/keel/commit/5887230836e955dcd8b0802d319dd032f367c800))
+
 ## [1.2.0](https://github.com/slice-soft/keel/compare/v1.1.1...v1.2.0) (2026-03-07)
 
 
