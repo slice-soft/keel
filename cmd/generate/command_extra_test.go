@@ -17,7 +17,7 @@ func TestCommandConfiguration(t *testing.T) {
 		t.Fatalf("expected RunE to be configured")
 	}
 
-	requiredFlags := []string{"transactional", "with-repository", "in-main", "repository-db"}
+	requiredFlags := []string{"transactional", "mongo", "gorm", "in-main"}
 	for _, name := range requiredFlags {
 		if cmd.Flags().Lookup(name) == nil {
 			t.Fatalf("expected flag %q to exist", name)
@@ -28,21 +28,21 @@ func TestCommandConfiguration(t *testing.T) {
 func TestRunGenerateDelegatesToExecute(t *testing.T) {
 	previousExecute := executeFn
 	previousTransactional := transactionalModule
-	previousWithRepository := withRepository
+	previousUseMongoPersistence := useMongoPersistence
+	previousUseGormPersistence := useGormPersistence
 	previousInMain := inMain
-	previousRepositoryDB := repositoryDB
 	t.Cleanup(func() {
 		executeFn = previousExecute
 		transactionalModule = previousTransactional
-		withRepository = previousWithRepository
+		useMongoPersistence = previousUseMongoPersistence
+		useGormPersistence = previousUseGormPersistence
 		inMain = previousInMain
-		repositoryDB = previousRepositoryDB
 	})
 
 	transactionalModule = true
-	withRepository = true
+	useMongoPersistence = true
+	useGormPersistence = false
 	inMain = true
-	repositoryDB = "mongo"
 
 	called := false
 	executeFn = func(genType, rawName string, opts Options) error {
@@ -50,11 +50,8 @@ func TestRunGenerateDelegatesToExecute(t *testing.T) {
 		if genType != "module" || rawName != "users" {
 			t.Fatalf("unexpected args: %s %s", genType, rawName)
 		}
-		if !opts.TransactionalModule || !opts.WithRepository || !opts.ControllerInMain {
+		if !opts.TransactionalModule || !opts.UseMongoPersistence || opts.UseGormPersistence || !opts.ControllerInMain {
 			t.Fatalf("unexpected opts: %#v", opts)
-		}
-		if opts.RepositoryBackend != "mongo" {
-			t.Fatalf("unexpected repository backend: %#v", opts.RepositoryBackend)
 		}
 		return nil
 	}

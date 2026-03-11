@@ -39,9 +39,9 @@ const (
 
 type Options struct {
 	TransactionalModule bool
-	WithRepository      bool
+	UseMongoPersistence bool
+	UseGormPersistence  bool
 	ControllerInMain    bool
-	RepositoryBackend   string
 }
 
 var promptRepositoryBackendFn = promptRepositoryBackend
@@ -99,21 +99,20 @@ func execute(genType, rawName string, opts Options) error {
 		return err
 	}
 
-	if opts.RepositoryBackend != "" {
-		if resolvedType == typeModule && !opts.WithRepository {
-			return fmt.Errorf("--repository-db requires --with-repository when generating a module")
-		}
-		if resolvedType != typeModule && resolvedType != typeRepository {
-			return fmt.Errorf("--repository-db is only valid for repository generation")
-		}
+	explicitRepositoryBackend, hasPersistenceFlag, err := resolvePersistenceBackend(opts)
+	if err != nil {
+		return err
 	}
 
 	repositoryChoice := repositoryBackendStub
-	requiresRepositoryChoice := (resolvedType == typeModule && opts.WithRepository) || (resolvedType == typeRepository && !parsed.standalone)
-	if requiresRepositoryChoice {
-		repositoryChoice, err = resolveRepositoryBackend(opts.RepositoryBackend)
-		if err != nil {
-			return err
+	if hasPersistenceFlag {
+		if resolvedType != typeModule && resolvedType != typeRepository {
+			return fmt.Errorf("--mongo and --gorm are only valid for module or repository generation")
+		}
+		if explicitRepositoryBackend != repositoryBackendStub {
+			if err := ensurePersistenceAddonInstalledFn(explicitRepositoryBackend); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -121,14 +120,17 @@ func execute(genType, rawName string, opts Options) error {
 		if !parsed.standalone {
 			return fmt.Errorf("module name must not contain '/'")
 		}
+		if hasPersistenceFlag {
+			repositoryChoice = explicitRepositoryBackend
+		}
 		if err := generateModule(parsed.componentName, opts, repositoryChoice); err != nil {
 			return err
 		}
 		return ensureModuleRegisteredInMain(parsed.componentName)
 	}
 
-	if opts.TransactionalModule || opts.WithRepository {
-		return fmt.Errorf("--transactional and --with-repository are only valid for module generation")
+	if opts.TransactionalModule {
+		return fmt.Errorf("--transactional is only valid for module generation")
 	}
 	if opts.ControllerInMain && !(resolvedType == typeController && parsed.standalone) {
 		return fmt.Errorf("--in-main is only valid for standalone controller generation")
@@ -140,6 +142,16 @@ func execute(genType, rawName string, opts Options) error {
 
 	if err := ensureModuleExists(parsed.moduleName); err != nil {
 		return err
+	}
+	if resolvedType == typeRepository && !parsed.standalone {
+		if hasPersistenceFlag {
+			repositoryChoice = explicitRepositoryBackend
+		} else {
+			repositoryChoice, err = resolveRepositoryBackend("")
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if err := generateInModule(resolvedType, parsed.moduleName, parsed.componentName, repositoryChoice); err != nil {
 		return err
@@ -331,23 +343,14 @@ func parseRepositoryBackend(raw string) (repositoryBackend, error) {
 func repositoryFilesForBackend(componentName, baseDir, packageOverride string, repositoryChoice repositoryBackend, includeRegenerateHint bool) []genFile {
 	switch repositoryChoice {
 	case repositoryBackendGorm:
-		if generator.IsAddonInstalled(gormAddonModulePath) {
-			return buildGormRepositoryFiles(componentName, baseDir, packageOverride)
-		}
-		fmt.Println("  ⚠  ss-keel-gorm not found in go.mod — generated stub repository")
-		fmt.Println("     Install the GORM adapter with: keel add gorm")
-		if includeRegenerateHint {
-			fmt.Println("     Then regenerate with: keel generate repository <module/name> --repository-db=gorm")
-		}
+		return buildGormRepositoryFiles(componentName, baseDir, packageOverride)
 	case repositoryBackendMongo:
-		if generator.IsAddonInstalled(mongoAddonModulePath) {
-			return buildMongoRepositoryFiles(componentName, baseDir, packageOverride)
-		}
-		fmt.Println("  ⚠  ss-keel-mongo not found in go.mod — generated stub repository")
-		fmt.Println("     Install the Mongo adapter with: keel add mongo")
-		if includeRegenerateHint {
-			fmt.Println("     Then regenerate with: keel generate repository <module/name> --repository-db=mongo")
-		}
+		return buildMongoRepositoryFiles(componentName, baseDir, packageOverride)
+	}
+
+	if includeRegenerateHint && !generator.IsAddonInstalled(gormAddonModulePath) && !generator.IsAddonInstalled(mongoAddonModulePath) {
+		fmt.Println("  ⚠  no persistence addon found in go.mod — generated stub repository")
+		fmt.Println("     Install an addon with: keel add gorm or keel add mongo")
 	}
 
 	return buildSimpleFiles(typeRepository, componentName, baseDir, "repository.go.tmpl", "repository_test.go.tmpl", packageOverride)
