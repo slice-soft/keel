@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/contracts"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
@@ -13,7 +13,7 @@ type {{.CamelName}}PublisherStub struct {
 	called bool
 }
 
-func (p *{{.CamelName}}PublisherStub) Publish(ctx context.Context, msg core.Message) error {
+func (p *{{.CamelName}}PublisherStub) Publish(ctx context.Context, msg contracts.Message) error {
 	_ = ctx
 	p.called = true
 	if msg.Topic == "" {
@@ -30,13 +30,13 @@ type {{.CamelName}}SubscriberStub struct {
 	called bool
 }
 
-func (s *{{.CamelName}}SubscriberStub) Subscribe(ctx context.Context, topic string, handler core.MessageHandler) error {
+func (s *{{.CamelName}}SubscriberStub) Subscribe(ctx context.Context, topic string, handler contracts.MessageHandler) error {
 	_ = ctx
 	s.called = true
 	if topic == "" {
 		return errors.New("missing topic")
 	}
-	return handler(context.Background(), core.Message{Topic: topic})
+	return handler(context.Background(), contracts.Message{Topic: topic})
 }
 
 func (s *{{.CamelName}}SubscriberStub) Close() error {

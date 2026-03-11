@@ -563,7 +563,10 @@ func TestGenerateStandaloneControllerInlineInMain(t *testing.T) {
 	}
 
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
-	if !strings.Contains(mainContent, `core.GET("/ops-ping"`) {
+	if !strings.Contains(mainContent, "app.RegisterController(contracts.ControllerFunc[httpx.Route]") {
+		t.Fatalf("expected inline controller registration in cmd/main.go, got:\n%s", mainContent)
+	}
+	if !strings.Contains(mainContent, `httpx.GET("/ops-ping"`) {
 		t.Fatalf("expected inline route in cmd/main.go, got:\n%s", mainContent)
 	}
 }

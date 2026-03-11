@@ -4,20 +4,20 @@ import (
 	"context"
 	"sync"
 
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/contracts"
 )
 
 // InMemoryScheduler is a minimal scheduler implementation used by generated projects.
 type InMemoryScheduler struct {
 	mu   sync.Mutex
-	jobs []core.Job
+	jobs []contracts.Job
 }
 
 func NewInMemoryScheduler() *InMemoryScheduler {
-	return &InMemoryScheduler{jobs: []core.Job{}}
+	return &InMemoryScheduler{jobs: []contracts.Job{}}
 }
 
-func (s *InMemoryScheduler) Add(job core.Job) error {
+func (s *InMemoryScheduler) Add(job contracts.Job) error {
 	s.mu.Lock()
 	s.jobs = append(s.jobs, job)
 	s.mu.Unlock()

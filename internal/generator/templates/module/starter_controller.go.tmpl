@@ -1,7 +1,7 @@
 package starter
 
 import (
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/core/httpx"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
@@ -14,16 +14,16 @@ func NewController(svc *Service, log *logger.Logger) *Controller {
 	return &Controller{svc: svc, log: log}
 }
 
-func (c *Controller) Routes() []core.Route {
-	return []core.Route{
-		core.GET("/hello", c.Hello).
+func (c *Controller) Routes() []httpx.Route {
+	return []httpx.Route{
+		httpx.GET("/hello", c.Hello).
 			Tag("starter").
 			Describe("Starter hello route").
-			WithResponse(core.WithResponse[HelloResponseDTO](200)),
+			WithResponse(httpx.WithResponse[HelloResponseDTO](200)),
 	}
 }
 
-func (c *Controller) Hello(ctx *core.Ctx) error {
+func (c *Controller) Hello(ctx *httpx.Ctx) error {
 	if c.log != nil {
 		c.log.Info("starter hello route called")
 	}

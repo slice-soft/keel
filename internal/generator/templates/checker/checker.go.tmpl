@@ -3,7 +3,7 @@ package checkers
 import (
 	"context"
 
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/contracts"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
@@ -11,7 +11,7 @@ type {{.PascalName}}Checker struct {
 	log *logger.Logger
 }
 
-var _ core.HealthChecker = (*{{.PascalName}}Checker)(nil)
+var _ contracts.HealthChecker = (*{{.PascalName}}Checker)(nil)
 
 func New{{.PascalName}}Checker(log *logger.Logger) *{{.PascalName}}Checker {
 	return &{{.PascalName}}Checker{log: log}

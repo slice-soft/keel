@@ -2,7 +2,7 @@ package guards
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/contracts"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
@@ -10,7 +10,7 @@ type {{.PascalName}}Guard struct {
 	log *logger.Logger
 }
 
-var _ core.Guard = (*{{.PascalName}}Guard)(nil)
+var _ contracts.Guard = (*{{.PascalName}}Guard)(nil)
 
 func New{{.PascalName}}Guard(log *logger.Logger) *{{.PascalName}}Guard {
 	return &{{.PascalName}}Guard{log: log}
