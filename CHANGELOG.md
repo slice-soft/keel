@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/slice-soft/keel/compare/v1.2.1...v1.3.0) (2026-03-08)
+
+
+### Features
+
+* add support for MongoDB repository backend and enhance generation logic ([#11](https://github.com/slice-soft/keel/issues/11)) ([8083a20](https://github.com/slice-soft/keel/commit/8083a203cf99200b325f2cf414f1308d2f4a96a4))
+
 ## [1.2.1](https://github.com/slice-soft/keel/compare/v1.2.0...v1.2.1) (2026-03-08)
 
 
