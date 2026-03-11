@@ -1,0 +1,158 @@
+package {{.PackageName}}
+
+import (
+	"context"
+	"strings"
+
+	"github.com/slice-soft/ss-keel-core/contracts"
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/core/httpx"
+	"github.com/slice-soft/ss-keel-core/logger"
+	"github.com/slice-soft/ss-keel-mongo/mongo"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+type {{.PascalName}}RepositoryContract interface {
+	contracts.Repository[{{.PascalName}}Entity, string, httpx.PageQuery, httpx.Page[{{.PascalName}}Entity]]
+}
+
+type {{.PascalName}}MongoDocument struct {
+	ID   primitive.ObjectID `bson:"_id,omitempty"`
+	Name string             `bson:"name"`
+}
+
+// {{.PascalName}}Repository wraps MongoRepository and is ready for CRUD operations.
+// Add custom document queries below as needed.
+type {{.PascalName}}Repository struct {
+	repo *mongo.MongoRepository[{{.PascalName}}MongoDocument, string]
+	log *logger.Logger
+}
+
+var _ {{.PascalName}}RepositoryContract = (*{{.PascalName}}Repository)(nil)
+
+func New{{.PascalName}}Repository(log *logger.Logger, client *mongo.Client) *{{.PascalName}}Repository {
+	return &{{.PascalName}}Repository{
+		repo: mongo.NewRepository[{{.PascalName}}MongoDocument, string](client, "{{.SnakeName}}", mongo.WithObjectIDHex[{{.PascalName}}MongoDocument]()),
+		log:  log,
+	}
+}
+
+func (r *{{.PascalName}}Repository) FindByID(ctx context.Context, id string) (*{{.PascalName}}Entity, error) {
+	normalizedID, err := normalize{{.PascalName}}ID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	document, err := r.repo.FindByID(ctx, normalizedID)
+	if err != nil {
+		return nil, err
+	}
+	if document == nil {
+		return nil, nil
+	}
+
+	entity := to{{.PascalName}}Entity(*document)
+	return &entity, nil
+}
+
+func (r *{{.PascalName}}Repository) FindAll(ctx context.Context, q httpx.PageQuery) (httpx.Page[{{.PascalName}}Entity], error) {
+	page, err := r.repo.FindAll(ctx, q)
+	if err != nil {
+		return httpx.Page[{{.PascalName}}Entity]{}, err
+	}
+
+	items := make([]{{.PascalName}}Entity, 0, len(page.Data))
+	for _, document := range page.Data {
+		items = append(items, to{{.PascalName}}Entity(document))
+	}
+
+	return httpx.NewPage(items, page.Total, page.Page, page.Limit), nil
+}
+
+func (r *{{.PascalName}}Repository) Create(ctx context.Context, entity *{{.PascalName}}Entity) error {
+	document, err := to{{.PascalName}}MongoDocument(entity)
+	if err != nil {
+		return err
+	}
+	if document.ID.IsZero() {
+		document.ID = primitive.NewObjectID()
+	}
+
+	if err := r.repo.Create(ctx, &document); err != nil {
+		return err
+	}
+
+	entity.ID = document.ID.Hex()
+	return nil
+}
+
+func (r *{{.PascalName}}Repository) Update(ctx context.Context, id string, entity *{{.PascalName}}Entity) error {
+	normalizedID, err := normalize{{.PascalName}}ID(id)
+	if err != nil {
+		return err
+	}
+
+	document, err := to{{.PascalName}}MongoDocument(entity)
+	if err != nil {
+		return err
+	}
+	document.ID, err = primitive.ObjectIDFromHex(normalizedID)
+	if err != nil {
+		return core.BadRequest("invalid {{.KebabName}} id")
+	}
+
+	if err := r.repo.Update(ctx, normalizedID, &document); err != nil {
+		return err
+	}
+
+	entity.ID = document.ID.Hex()
+	return nil
+}
+
+func (r *{{.PascalName}}Repository) Delete(ctx context.Context, id string) error {
+	normalizedID, err := normalize{{.PascalName}}ID(id)
+	if err != nil {
+		return err
+	}
+	return r.repo.Delete(ctx, normalizedID)
+}
+
+func to{{.PascalName}}MongoDocument(entity *{{.PascalName}}Entity) ({{.PascalName}}MongoDocument, error) {
+	if entity == nil {
+		return {{.PascalName}}MongoDocument{}, core.BadRequest("{{.KebabName}} entity is required")
+	}
+
+	document := {{.PascalName}}MongoDocument{
+		Name: entity.Name,
+	}
+
+	if trimmedID := strings.TrimSpace(entity.ID); trimmedID != "" {
+		objectID, err := primitive.ObjectIDFromHex(trimmedID)
+		if err != nil {
+			return {{.PascalName}}MongoDocument{}, core.BadRequest("invalid {{.KebabName}} id")
+		}
+		document.ID = objectID
+	}
+
+	return document, nil
+}
+
+func to{{.PascalName}}Entity(document {{.PascalName}}MongoDocument) {{.PascalName}}Entity {
+	return {{.PascalName}}Entity{
+		ID:   document.ID.Hex(),
+		Name: document.Name,
+	}
+}
+
+func normalize{{.PascalName}}ID(id string) (string, error) {
+	trimmedID := strings.TrimSpace(id)
+	if trimmedID == "" {
+		return "", core.BadRequest("invalid {{.KebabName}} id")
+	}
+
+	if _, err := primitive.ObjectIDFromHex(trimmedID); err != nil {
+		return "", core.BadRequest("invalid {{.KebabName}} id")
+	}
+
+	return trimmedID, nil
+}

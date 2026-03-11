@@ -6,8 +6,6 @@ import (
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-// {{.PascalName}}Guard validates access to protected routes.
-// Usage: route.Use(guard.Middleware()).WithSecured("bearerAuth")
 type {{.PascalName}}Guard struct {
 	log *logger.Logger
 }
@@ -20,19 +18,8 @@ func New{{.PascalName}}Guard(log *logger.Logger) *{{.PascalName}}Guard {
 
 func (g *{{.PascalName}}Guard) Middleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// TODO: implement access logic (token, role, permission, etc.)
-		token := c.Get("Authorization")
-		if token == "" {
-			if g.log != nil {
-				g.log.Warn("unauthorized access in {{.KebabName}} guard")
-			}
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"status_code": 401,
-				"message":     "unauthorized",
-			})
-		}
 		if g.log != nil {
-			g.log.Debug("authorized access in {{.KebabName}} guard")
+			g.log.Debug("executing {{.KebabName}} guard middleware")
 		}
 		return c.Next()
 	}

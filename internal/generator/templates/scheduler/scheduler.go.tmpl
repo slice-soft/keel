@@ -5,12 +5,6 @@ import (
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-// Register{{.PascalName}}Jobs registers all {{.KebabName}} jobs into the scheduler.
-// Usage in main.go:
-//
-//	sched := cron.New() // e.g. ss-keel-cron
-//	app.RegisterScheduler(sched)
-//	scheduler.Register{{.PascalName}}Jobs(sched, appLogger)
 func Register{{.PascalName}}Jobs(s core.Scheduler, log *logger.Logger) error {
 	return s.Add(New{{.PascalName}}Job(log))
 }

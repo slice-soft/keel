@@ -1,0 +1,18 @@
+package {{.PackageName}}
+
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+func Test{{.PascalName}}ControllerRoutes(t *testing.T) {
+	ctrl := New{{.PascalName}}Controller(nil, logger.NewLogger(false))
+	if ctrl == nil {
+		t.Fatal("expected controller instance")
+	}
+
+	if len(ctrl.Routes()) != 5 {
+		t.Fatalf("expected 5 routes, got %d", len(ctrl.Routes()))
+	}
+}

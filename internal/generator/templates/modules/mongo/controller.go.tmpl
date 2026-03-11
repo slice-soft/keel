@@ -1,0 +1,135 @@
+package {{.PackageName}}
+
+import (
+	"context"
+
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/core/httpx"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+type {{.PascalName}}ServiceContract interface {
+	List(ctx context.Context, q httpx.PageQuery) (httpx.Page[{{.PascalName}}ResponseDTO], error)
+	GetByID(ctx context.Context, id string) (*{{.PascalName}}ResponseDTO, error)
+	Create(ctx context.Context, req Create{{.PascalName}}RequestDTO) (*{{.PascalName}}ResponseDTO, error)
+	Update(ctx context.Context, id string, req Update{{.PascalName}}RequestDTO) (*{{.PascalName}}ResponseDTO, error)
+	Delete(ctx context.Context, id string) error
+}
+
+type {{.PascalName}}Controller struct {
+	svc {{.PascalName}}ServiceContract
+	log *logger.Logger
+}
+
+func New{{.PascalName}}Controller(svc {{.PascalName}}ServiceContract, log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{svc: svc, log: log}
+}
+
+func (c *{{.PascalName}}Controller) Routes() []httpx.Route {
+	return []httpx.Route{
+		httpx.GET("/{{.KebabName}}", c.List).
+			Tag("{{.KebabName}}").
+			Describe("List {{.KebabName}}").
+			WithQueryParam("page", "integer", false, "Page number (default 1)").
+			WithQueryParam("limit", "integer", false, "Page size (default 20, max 100)").
+			WithResponse(httpx.WithResponse[httpx.Page[{{.PascalName}}ResponseDTO]](200)),
+		httpx.GET("/{{.KebabName}}/:id", c.GetByID).
+			Tag("{{.KebabName}}").
+			Describe("Get {{.KebabName}} by ID").
+			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
+		httpx.POST("/{{.KebabName}}", c.Create).
+			Tag("{{.KebabName}}").
+			Describe("Create {{.KebabName}}").
+			WithBody(httpx.WithBody[Create{{.PascalName}}RequestDTO]()).
+			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](201)),
+		httpx.PATCH("/{{.KebabName}}/:id", c.Update).
+			Tag("{{.KebabName}}").
+			Describe("Update {{.KebabName}}").
+			WithBody(httpx.WithBody[Update{{.PascalName}}RequestDTO]()).
+			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
+		httpx.DELETE("/{{.KebabName}}/:id", c.Delete).
+			Tag("{{.KebabName}}").
+			Describe("Delete {{.KebabName}}"),
+	}
+}
+
+func (c *{{.PascalName}}Controller) List(ctx *httpx.Ctx) error {
+	svc, err := c.service()
+	if err != nil {
+		return err
+	}
+
+	page, err := svc.List(ctx.UserContext(), ctx.ParsePagination())
+	if err != nil {
+		return err
+	}
+	return ctx.OK(page)
+}
+
+func (c *{{.PascalName}}Controller) GetByID(ctx *httpx.Ctx) error {
+	svc, err := c.service()
+	if err != nil {
+		return err
+	}
+
+	item, err := svc.GetByID(ctx.UserContext(), ctx.Params("id"))
+	if err != nil {
+		return err
+	}
+	return ctx.OK(item)
+}
+
+func (c *{{.PascalName}}Controller) Create(ctx *httpx.Ctx) error {
+	svc, err := c.service()
+	if err != nil {
+		return err
+	}
+
+	var req Create{{.PascalName}}RequestDTO
+	if err := ctx.ParseBody(&req); err != nil {
+		return err
+	}
+
+	item, err := svc.Create(ctx.UserContext(), req)
+	if err != nil {
+		return err
+	}
+	return ctx.Created(item)
+}
+
+func (c *{{.PascalName}}Controller) Update(ctx *httpx.Ctx) error {
+	svc, err := c.service()
+	if err != nil {
+		return err
+	}
+
+	var req Update{{.PascalName}}RequestDTO
+	if err := ctx.ParseBody(&req); err != nil {
+		return err
+	}
+
+	item, err := svc.Update(ctx.UserContext(), ctx.Params("id"), req)
+	if err != nil {
+		return err
+	}
+	return ctx.OK(item)
+}
+
+func (c *{{.PascalName}}Controller) Delete(ctx *httpx.Ctx) error {
+	svc, err := c.service()
+	if err != nil {
+		return err
+	}
+
+	if err := svc.Delete(ctx.UserContext(), ctx.Params("id")); err != nil {
+		return err
+	}
+	return ctx.NoContent()
+}
+
+func (c *{{.PascalName}}Controller) service() ({{.PascalName}}ServiceContract, error) {
+	if c == nil || c.svc == nil {
+		return nil, core.Internal("{{.KebabName}} service is not configured", nil)
+	}
+	return c.svc, nil
+}

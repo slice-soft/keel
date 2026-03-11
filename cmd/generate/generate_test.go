@@ -7,6 +7,15 @@ import (
 	"testing"
 )
 
+func resetGenerateDeps(t *testing.T) {
+	t.Helper()
+
+	previousEnsurePersistenceAddonInstalled := ensurePersistenceAddonInstalledFn
+	t.Cleanup(func() {
+		ensurePersistenceAddonInstalledFn = previousEnsurePersistenceAddonInstalled
+	})
+}
+
 func TestParseName(t *testing.T) {
 	t.Run("module component", func(t *testing.T) {
 		got, err := parseName("users/validate")
@@ -95,8 +104,13 @@ func TestGenerateModuleDefaultsAndAlias(t *testing.T) {
 	}
 
 	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_module.go"))
+	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_dto.go"))
+	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_entity.go"))
 	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_service.go"))
 	assertFile(t, filepath.Join(root, "internal", "modules", "users", "users_controller.go"))
+	if _, err := os.Stat(filepath.Join(root, "internal", "modules", "users", "users_repository.go")); err == nil {
+		t.Fatal("did not expect repository by default")
+	}
 	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "users", "users_module.go"))
 	if !strings.Contains(moduleContent, "usersService := NewUsersService(m.log)") {
 		t.Fatalf("expected service registration in module, got:\\n%s", moduleContent)
@@ -114,18 +128,26 @@ func TestGenerateModuleDefaultsAndAlias(t *testing.T) {
 	}
 }
 
-func TestGenerateTransactionalModuleWithRepository(t *testing.T) {
+func TestGenerateTransactionalModuleWithGormPersistence(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
 	defer func() { _ = os.Chdir(oldWD) }()
 
+	resetGenerateDeps(t)
 	seedProject(t, root)
 
 	if err := os.Chdir(root); err != nil {
 		t.Fatalf("chdir failed: %v", err)
 	}
 
-	opts := Options{TransactionalModule: true, WithRepository: true}
+	ensurePersistenceAddonInstalledFn = func(backend repositoryBackend) error {
+		if backend != repositoryBackendGorm {
+			t.Fatalf("unexpected backend: %s", backend)
+		}
+		return nil
+	}
+
+	opts := Options{TransactionalModule: true, UseGormPersistence: true}
 	if err := execute("module", "payments", opts); err != nil {
 		t.Fatalf("generate module failed: %v", err)
 	}
@@ -137,21 +159,33 @@ func TestGenerateTransactionalModuleWithRepository(t *testing.T) {
 	}
 }
 
-func TestGenerateModuleWithGormRepositoryWiresDatabaseInMain(t *testing.T) {
+func TestGenerateModuleWithGormFlagWiresDatabaseInMain(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
 	defer func() { _ = os.Chdir(oldWD) }()
 
+	resetGenerateDeps(t)
 	seedProject(t, root)
-	enableGormAddonInGoMod(t, root)
 
 	if err := os.Chdir(root); err != nil {
 		t.Fatalf("chdir failed: %v", err)
 	}
 
-	opts := Options{WithRepository: true}
+	called := false
+	ensurePersistenceAddonInstalledFn = func(backend repositoryBackend) error {
+		called = true
+		if backend != repositoryBackendGorm {
+			t.Fatalf("unexpected backend: %s", backend)
+		}
+		return nil
+	}
+
+	opts := Options{UseGormPersistence: true}
 	if err := execute("module", "payments", opts); err != nil {
 		t.Fatalf("generate module failed: %v", err)
+	}
+	if !called {
+		t.Fatal("expected gorm addon install path to run")
 	}
 
 	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_module.go"))
@@ -163,6 +197,14 @@ func TestGenerateModuleWithGormRepositoryWiresDatabaseInMain(t *testing.T) {
 	}
 	if !strings.Contains(moduleContent, "paymentsController := NewPaymentsController(paymentsService, m.log)") {
 		t.Fatalf("expected module to wire controller with service, got:\n%s", moduleContent)
+	}
+
+	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_entity.go"))
+	if strings.Contains(entityContent, "gorm:\"") {
+		t.Fatalf("did not expect gorm tags in the domain entity, got:\n%s", entityContent)
+	}
+	if strings.Contains(entityContent, "github.com/slice-soft/ss-keel-gorm") {
+		t.Fatalf("did not expect gorm imports in the domain entity, got:\n%s", entityContent)
 	}
 
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
@@ -177,21 +219,33 @@ func TestGenerateModuleWithGormRepositoryWiresDatabaseInMain(t *testing.T) {
 	}
 }
 
-func TestGenerateModuleWithMongoRepositoryWiresDatabaseInMain(t *testing.T) {
+func TestGenerateModuleWithMongoFlagWiresDatabaseInMain(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
 	defer func() { _ = os.Chdir(oldWD) }()
 
+	resetGenerateDeps(t)
 	seedProject(t, root)
-	enableMongoAddonInGoMod(t, root)
 
 	if err := os.Chdir(root); err != nil {
 		t.Fatalf("chdir failed: %v", err)
 	}
 
-	opts := Options{WithRepository: true, RepositoryBackend: "mongo"}
+	called := false
+	ensurePersistenceAddonInstalledFn = func(backend repositoryBackend) error {
+		called = true
+		if backend != repositoryBackendMongo {
+			t.Fatalf("unexpected backend: %s", backend)
+		}
+		return nil
+	}
+
+	opts := Options{UseMongoPersistence: true}
 	if err := execute("module", "payments", opts); err != nil {
 		t.Fatalf("generate module failed: %v", err)
+	}
+	if !called {
+		t.Fatal("expected mongo addon install path to run")
 	}
 
 	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_module.go"))
@@ -200,6 +254,16 @@ func TestGenerateModuleWithMongoRepositoryWiresDatabaseInMain(t *testing.T) {
 	}
 	if !strings.Contains(moduleContent, "\"github.com/slice-soft/ss-keel-mongo/mongo\"") {
 		t.Fatalf("expected mongo import in module, got:\n%s", moduleContent)
+	}
+
+	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_entity.go"))
+	if strings.Contains(entityContent, "primitive.ObjectID") || strings.Contains(entityContent, "bson:\"") {
+		t.Fatalf("did not expect mongo persistence details in the domain entity, got:\n%s", entityContent)
+	}
+
+	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_repository.go"))
+	if !strings.Contains(repositoryContent, "type PaymentsMongoDocument struct") {
+		t.Fatalf("expected mongo repository to keep its persistence document in the repository layer, got:\n%s", repositoryContent)
 	}
 
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
@@ -233,9 +297,91 @@ func TestGenerateRepositoryInModuleRewiresMainWithDatabase(t *testing.T) {
 		t.Fatalf("generate repository failed: %v", err)
 	}
 
+	moduleContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "billing_module.go"))
+	if !strings.Contains(moduleContent, "billingService := NewBillingServiceWithRepository(billingRepository, m.log)") {
+		t.Fatalf("expected module to rewire the base service with repository support, got:\n%s", moduleContent)
+	}
+
+	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "billing_repository.go"))
+	if strings.Contains(repositoryContent, "type BillingEntity struct") {
+		t.Fatalf("did not expect repository generation to redefine the existing entity, got:\n%s", repositoryContent)
+	}
+
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
 	if !strings.Contains(mainContent, "app.Use(billing.NewModule(appLogger, db))") {
 		t.Fatalf("expected module registration to be rewired with db, got:\n%s", mainContent)
+	}
+}
+
+func TestGenerateRepositoryCreatesSeparateEntityFile(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	if err := execute("module", "billing", Options{}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+	if err := execute("repository", "billing/invoice", Options{}); err != nil {
+		t.Fatalf("generate repository failed: %v", err)
+	}
+
+	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "invoice_entity.go"))
+	if !strings.Contains(entityContent, "type InvoiceEntity struct") {
+		t.Fatalf("expected separate invoice entity file, got:\n%s", entityContent)
+	}
+
+	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "invoice_repository.go"))
+	if strings.Contains(repositoryContent, "type InvoiceEntity struct") {
+		t.Fatalf("did not expect repository file to define the entity, got:\n%s", repositoryContent)
+	}
+	if !strings.Contains(repositoryContent, "contracts.Repository[InvoiceEntity, string, httpx.PageQuery, httpx.Page[InvoiceEntity]]") {
+		t.Fatalf("expected repository to use the core contracts with the separate entity, got:\n%s", repositoryContent)
+	}
+}
+
+func TestGenerateMongoRepositoryCreatesSeparateEntityFile(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	ensurePersistenceAddonInstalledFn = func(backend repositoryBackend) error {
+		if backend != repositoryBackendMongo {
+			t.Fatalf("unexpected backend: %s", backend)
+		}
+		return nil
+	}
+
+	if err := execute("module", "billing", Options{}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+	if err := execute("repository", "billing/customer", Options{UseMongoPersistence: true}); err != nil {
+		t.Fatalf("generate repository failed: %v", err)
+	}
+
+	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "customer_entity.go"))
+	if strings.Contains(entityContent, "primitive.ObjectID") || strings.Contains(entityContent, "bson:\"") {
+		t.Fatalf("did not expect persistence details in the generated domain entity, got:\n%s", entityContent)
+	}
+
+	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "customer_repository.go"))
+	if strings.Contains(repositoryContent, "type CustomerEntity struct") {
+		t.Fatalf("did not expect repository file to define the entity, got:\n%s", repositoryContent)
+	}
+	if !strings.Contains(repositoryContent, "type CustomerMongoDocument struct") {
+		t.Fatalf("expected repository to define a persistence document instead, got:\n%s", repositoryContent)
 	}
 }
 
@@ -283,7 +429,7 @@ func TestGenerateRepositoryWithBothAddonsPromptsBackendSelection(t *testing.T) {
 	}
 }
 
-func TestRepositoryBackendValidationForNonRepositoryGeneration(t *testing.T) {
+func TestPersistenceFlagsValidationForNonRepositoryGeneration(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
 	defer func() { _ = os.Chdir(oldWD) }()
@@ -294,9 +440,26 @@ func TestRepositoryBackendValidationForNonRepositoryGeneration(t *testing.T) {
 		t.Fatalf("chdir failed: %v", err)
 	}
 
-	err := execute("service", "users", Options{RepositoryBackend: "mongo"})
-	if err == nil || !strings.Contains(err.Error(), "--repository-db is only valid for repository generation") {
-		t.Fatalf("expected repository backend validation error, got: %v", err)
+	err := execute("service", "users", Options{UseMongoPersistence: true})
+	if err == nil || !strings.Contains(err.Error(), "--mongo and --gorm are only valid for module or repository generation") {
+		t.Fatalf("expected persistence flag validation error, got: %v", err)
+	}
+}
+
+func TestPersistenceFlagsMustNotConflict(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	err := execute("module", "users", Options{UseMongoPersistence: true, UseGormPersistence: true})
+	if err == nil || !strings.Contains(err.Error(), "--mongo and --gorm cannot be used together") {
+		t.Fatalf("expected conflicting persistence flags error, got: %v", err)
 	}
 }
 

@@ -1,0 +1,14 @@
+package {{.PackageName}}
+
+type Create{{.PascalName}}RequestDTO struct {
+	Name string `json:"name" validate:"required"`
+}
+
+type Update{{.PascalName}}RequestDTO struct {
+	Name *string `json:"name"`
+}
+
+type {{.PascalName}}ResponseDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}

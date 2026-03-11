@@ -1,0 +1,39 @@
+package {{.PackageName}}
+
+import (
+	"github.com/slice-soft/ss-keel-core/contracts"
+	"github.com/slice-soft/ss-keel-core/core/httpx"
+	"github.com/slice-soft/ss-keel-core/logger"
+	"github.com/slice-soft/ss-keel-gorm/database"
+)
+
+type {{.PascalName}}RepositoryContract interface {
+	contracts.Repository[{{.PascalName}}Entity, string, httpx.PageQuery, httpx.Page[{{.PascalName}}Entity]]
+}
+
+// {{.PascalName}}Repository wraps the generic GormRepository with CRUD operations
+// already implemented. Add custom query methods below as needed.
+type {{.PascalName}}Repository struct {
+	*database.GormRepository[{{.PascalName}}Entity, string]
+	log *logger.Logger
+}
+
+var _ {{.PascalName}}RepositoryContract = (*{{.PascalName}}Repository)(nil)
+
+func New{{.PascalName}}Repository(log *logger.Logger, db *database.DBinstance) *{{.PascalName}}Repository {
+	return &{{.PascalName}}Repository{
+		GormRepository: database.NewGormRepository[{{.PascalName}}Entity, string](db),
+		log:            log,
+	}
+}
+
+// Add custom queries here. Example:
+//
+//	func (r *{{.PascalName}}Repository) FindByEmail(ctx context.Context, email string) (*{{.PascalName}}Entity, error) {
+//	    var entity {{.PascalName}}Entity
+//	    err := r.DB().WithContext(ctx).Where("email = ?", email).First(&entity).Error
+//	    if errors.Is(err, gorm.ErrRecordNotFound) {
+//	        return nil, nil
+//	    }
+//	    return &entity, err
+//	}

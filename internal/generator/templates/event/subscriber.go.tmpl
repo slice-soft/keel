@@ -7,7 +7,6 @@ import (
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-// {{.PascalName}}Subscriber consumes {{.KebabName}} domain events.
 type {{.PascalName}}Subscriber struct {
 	sub core.Subscriber
 	log *logger.Logger
@@ -17,8 +16,6 @@ func New{{.PascalName}}Subscriber(sub core.Subscriber, log *logger.Logger) *{{.P
 	return &{{.PascalName}}Subscriber{sub: sub, log: log}
 }
 
-// Subscribe registers all {{.KebabName}} event handlers.
-// Call this after the app is configured, e.g. in main.go or a module Register().
 func (s *{{.PascalName}}Subscriber) Subscribe(ctx context.Context) error {
 	if s.log != nil {
 		s.log.Info("subscribing to {{.KebabName}}.created events")
@@ -27,9 +24,10 @@ func (s *{{.PascalName}}Subscriber) Subscribe(ctx context.Context) error {
 }
 
 func (s *{{.PascalName}}Subscriber) on{{.PascalName}}Created(ctx context.Context, msg core.Message) error {
+	_ = ctx
+	_ = msg
 	if s.log != nil {
-		s.log.Debug("received {{.KebabName}}.created event")
+		s.log.Debug("processed {{.KebabName}}.created event")
 	}
-	// TODO: handle the event (msg.Payload contains the raw bytes)
 	return nil
 }

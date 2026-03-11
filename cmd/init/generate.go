@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	newcmd "github.com/slice-soft/keel/cmd/new"
-	"github.com/slice-soft/keel/internal/generator"
+	generator "github.com/slice-soft/keel/internal/generator/generate"
 )
 
 var getwdFn = os.Getwd

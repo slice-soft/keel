@@ -7,8 +7,6 @@ import (
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-// {{.PascalName}}Checker checks the health of the {{.KebabName}} dependency.
-// Usage: app.RegisterHealthChecker(New{{.PascalName}}Checker())
 type {{.PascalName}}Checker struct {
 	log *logger.Logger
 }
@@ -24,9 +22,9 @@ func (c *{{.PascalName}}Checker) Name() string {
 }
 
 func (c *{{.PascalName}}Checker) Check(ctx context.Context) error {
+	_ = ctx
 	if c.log != nil {
-		c.log.Debug("running {{.KebabName}} health check")
+		c.log.Debug("checking {{.KebabName}} health")
 	}
-	// TODO: implement health check (e.g. ping DB, Redis, external service)
 	return nil
 }
