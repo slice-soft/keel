@@ -1,0 +1,7 @@
+package {{.PackageName}}
+
+import "testing"
+
+func Test{{.PascalName}}RepositoryImplementsContract(t *testing.T) {
+	var _ {{.PascalName}}RepositoryContract = (*{{.PascalName}}Repository)(nil)
+}

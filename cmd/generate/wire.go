@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/slice-soft/keel/internal/generator"
+	generator "github.com/slice-soft/keel/internal/generator/generate"
 )
 
 type moduleDatabaseNeeds struct {

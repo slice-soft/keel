@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/slice-soft/keel/internal/generator"
+	generator "github.com/slice-soft/keel/internal/generator/generate"
 )
 
 func TestNewCommandConfiguration(t *testing.T) {

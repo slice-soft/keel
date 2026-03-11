@@ -5,15 +5,11 @@ import (
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-// {{.PascalName}} is a general-purpose middleware.
 func {{.PascalName}}(log *logger.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Logic before the next handler.
 		if log != nil {
 			log.Debug("executing {{.KebabName}} middleware")
 		}
-		err := c.Next()
-		// Logic after the next handler.
-		return err
+		return c.Next()
 	}
 }

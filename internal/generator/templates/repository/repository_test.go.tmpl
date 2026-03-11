@@ -1,0 +1,29 @@
+package {{.PackageName}}
+
+import (
+	"context"
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/core/httpx"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+func Test{{.PascalName}}Repository(t *testing.T) {
+	repo := New{{.PascalName}}Repository(logger.NewLogger(false))
+	if repo == nil {
+		t.Fatal("expected repository instance")
+	}
+
+	item, err := repo.FindByID(context.Background(), "1")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if item == nil || item.ID != "1" {
+		t.Fatalf("unexpected entity: %#v", item)
+	}
+
+	_, err = repo.FindAll(context.Background(), httpx.PageQuery{Page: 1, Limit: 10})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}

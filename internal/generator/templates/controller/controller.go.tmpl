@@ -1,47 +1,41 @@
 package {{.PackageName}}
 
 import (
+	"context"
+
 	"github.com/slice-soft/ss-keel-core/core"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
+type {{.PascalName}}ServiceContract interface {
+	Execute(ctx context.Context) error
+}
+
 type {{.PascalName}}Controller struct {
+	svc {{.PascalName}}ServiceContract
 	log *logger.Logger
 }
 
-func New{{.PascalName}}Controller(log *logger.Logger) *{{.PascalName}}Controller {
-	return &{{.PascalName}}Controller{log: log}
+func New{{.PascalName}}Controller(svc {{.PascalName}}ServiceContract, log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{svc: svc, log: log}
 }
 
 func (c *{{.PascalName}}Controller) Routes() []core.Route {
 	return []core.Route{
-		core.GET("/{{.KebabName}}", c.FindAll).
+		core.GET("/{{.KebabName}}", c.Handle).
 			Tag("{{.KebabName}}").
-			Describe("List {{.KebabName}}").
-			WithQueryParam("page", "integer", false, "Page number").
-			WithQueryParam("limit", "integer", false, "Items per page"),
-
-		core.GET("/{{.KebabName}}/:id", c.FindOne).
-			Tag("{{.KebabName}}").
-			Describe("Get {{.KebabName}} by ID"),
+			Describe("Handle {{.KebabName}} endpoint"),
 	}
 }
 
-func (c *{{.PascalName}}Controller) FindAll(ctx *core.Ctx) error {
-	q := ctx.ParsePagination()
-	_ = q
-	if c.log != nil {
-		c.log.Info("handling {{.KebabName}} find all request")
+func (c *{{.PascalName}}Controller) Handle(ctx *core.Ctx) error {
+	if c.svc != nil {
+		if err := c.svc.Execute(context.Background()); err != nil && c.log != nil {
+			c.log.Warn("{{.KebabName}} service returned an error: %v", err)
+		}
 	}
-	// TODO: implement
-	return ctx.OK([]any{})
-}
-
-func (c *{{.PascalName}}Controller) FindOne(ctx *core.Ctx) error {
-	id := ctx.Params("id")
 	if c.log != nil {
-		c.log.Info("handling {{.KebabName}} find one request id=%s", id)
+		c.log.Info("handling {{.KebabName}} controller request")
 	}
-	// TODO: implement
-	return ctx.OK(map[string]string{"id": id})
+	return ctx.OK(map[string]string{"component": "{{.KebabName}}"})
 }

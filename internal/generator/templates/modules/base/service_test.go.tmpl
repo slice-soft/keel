@@ -1,0 +1,19 @@
+package {{.PackageName}}
+
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+func Test{{.PascalName}}ServiceHello(t *testing.T) {
+	svc := New{{.PascalName}}Service(logger.NewLogger(false))
+	if svc == nil {
+		t.Fatal("expected service instance")
+	}
+
+	response := svc.Hello()
+	if response.Message == "" {
+		t.Fatal("expected hello response message")
+	}
+}

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/slice-soft/keel/internal/generator"
+	generator "github.com/slice-soft/keel/internal/generator/generate"
 )
 
 func scaffoldProject(setup projectSetup) error {

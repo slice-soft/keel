@@ -1,0 +1,49 @@
+package {{.PackageName}}
+
+import (
+	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/core/httpx"
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+type {{.PascalName}}ServiceContract interface {
+	Hello() {{.PascalName}}ResponseDTO
+}
+
+type {{.PascalName}}Controller struct {
+	svc {{.PascalName}}ServiceContract
+	log *logger.Logger
+}
+
+func New{{.PascalName}}Controller(svc {{.PascalName}}ServiceContract, log *logger.Logger) *{{.PascalName}}Controller {
+	return &{{.PascalName}}Controller{svc: svc, log: log}
+}
+
+func (c *{{.PascalName}}Controller) Routes() []httpx.Route {
+	return []httpx.Route{
+		httpx.GET("/{{.KebabName}}", c.Hello).
+			Tag("{{.KebabName}}").
+			Describe("{{.PascalName}} hello route").
+			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
+	}
+}
+
+func (c *{{.PascalName}}Controller) Hello(ctx *httpx.Ctx) error {
+	svc, err := c.service()
+	if err != nil {
+		return err
+	}
+
+	if c.log != nil {
+		c.log.Info("{{.KebabName}} hello route called")
+	}
+
+	return ctx.OK(svc.Hello())
+}
+
+func (c *{{.PascalName}}Controller) service() ({{.PascalName}}ServiceContract, error) {
+	if c == nil || c.svc == nil {
+		return nil, core.Internal("{{.KebabName}} service is not configured", nil)
+	}
+	return c.svc, nil
+}

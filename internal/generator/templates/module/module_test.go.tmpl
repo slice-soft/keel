@@ -1,0 +1,14 @@
+package {{.PackageName}}
+
+import (
+	"testing"
+
+	"github.com/slice-soft/ss-keel-core/logger"
+)
+
+func TestNewModule(t *testing.T) {
+	m := NewModule(logger.NewLogger(false){{- if .UsesGormDatabase }}, nil{{- end }}{{- if .UsesMongoDatabase }}, nil{{- end }})
+	if m == nil {
+		t.Fatal("expected module instance")
+	}
+}

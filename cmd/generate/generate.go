@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/slice-soft/keel/internal/generator"
+	generator "github.com/slice-soft/keel/internal/generator/generate"
 )
 
 const (
@@ -166,16 +166,7 @@ func generateModule(name string, opts Options, repositoryChoice repositoryBacken
 		return err
 	}
 
-	files := buildSimpleFiles(typeService, name, moduleDir(name), "service.go.tmpl", "service_test.go.tmpl", name)
-	if !opts.TransactionalModule {
-		files = append(files, buildSimpleFiles(typeController, name, moduleDir(name), "controller.go.tmpl", "controller_test.go.tmpl", name)...)
-	}
-	if opts.WithRepository {
-		repoFiles := repositoryFilesForBackend(name, moduleDir(name), name, repositoryChoice, false)
-		files = append(files, repoFiles...)
-	}
-
-	for _, file := range files {
+	for _, file := range buildModuleTemplateFiles(name, repositoryChoice, opts.TransactionalModule) {
 		if generator.FileExists(file.dest) {
 			continue
 		}
@@ -189,7 +180,7 @@ func generateModule(name string, opts Options, repositoryChoice repositoryBacken
 }
 
 func generateRepository(componentName, baseDir, packageOverride string, repositoryChoice repositoryBackend) error {
-	return createFiles(repositoryFilesForBackend(componentName, baseDir, packageOverride, repositoryChoice, true))
+	return createFiles(buildRepositoryFiles(componentName, baseDir, packageOverride, repositoryChoice))
 }
 
 func buildGormRepositoryFiles(componentName, baseDir, packageOverride string) []genFile {
@@ -199,12 +190,12 @@ func buildGormRepositoryFiles(componentName, baseDir, packageOverride string) []
 	}
 	return []genFile{
 		{
-			template: "templates/generate/repository/repository_gorm.go.tmpl",
+			template: "templates/repository/repository_gorm.go.tmpl",
 			dest:     filepath.Join(baseDir, data.SnakeName+"_repository.go"),
 			data:     data,
 		},
 		{
-			template: "templates/generate/repository/repository_gorm_test.go.tmpl",
+			template: "templates/repository/repository_gorm_test.go.tmpl",
 			dest:     filepath.Join(baseDir, data.SnakeName+"_repository_test.go"),
 			data:     data,
 		},
@@ -218,16 +209,35 @@ func buildMongoRepositoryFiles(componentName, baseDir, packageOverride string) [
 	}
 	return []genFile{
 		{
-			template: "templates/generate/repository/repository_mongo.go.tmpl",
+			template: "templates/repository/repository_mongo.go.tmpl",
 			dest:     filepath.Join(baseDir, data.SnakeName+"_repository.go"),
 			data:     data,
 		},
 		{
-			template: "templates/generate/repository/repository_mongo_test.go.tmpl",
+			template: "templates/repository/repository_mongo_test.go.tmpl",
 			dest:     filepath.Join(baseDir, data.SnakeName+"_repository_test.go"),
 			data:     data,
 		},
 	}
+}
+
+func buildRepositoryFiles(componentName, baseDir, packageOverride string, repositoryChoice repositoryBackend) []genFile {
+	data := generator.NewData(componentName)
+	if packageOverride != "" {
+		data.PackageName = generator.NewData(packageOverride).PackageName
+	}
+
+	files := make([]genFile, 0, 3)
+	entityDest := filepath.Join(baseDir, data.SnakeName+"_entity.go")
+	if !generator.FileExists(entityDest) {
+		files = append(files, genFile{
+			template: "templates/repository/entity.go.tmpl",
+			dest:     entityDest,
+			data:     data,
+		})
+	}
+
+	return append(files, repositoryFilesForBackend(componentName, baseDir, packageOverride, repositoryChoice, true)...)
 }
 
 func generateStandalone(genType, componentName string, opts Options) error {
@@ -421,12 +431,12 @@ func buildModuleFiles(moduleName string) []genFile {
 
 	return []genFile{
 		{
-			template: "templates/generate/module/module.go.tmpl",
+			template: "templates/module/module.go.tmpl",
 			dest:     moduleRegistryPath(moduleName),
 			data:     moduleData,
 		},
 		{
-			template: "templates/generate/module/module_test.go.tmpl",
+			template: "templates/module/module_test.go.tmpl",
 			dest:     filepath.Join(moduleDir(moduleName), moduleData.SnakeName+"_module_test.go"),
 			data:     moduleData,
 		},
@@ -441,12 +451,12 @@ func buildSimpleFiles(genType, componentName, baseDir, implTemplate, testTemplat
 
 	return []genFile{
 		{
-			template: filepath.Join("templates", "generate", genType, implTemplate),
+			template: filepath.Join("templates", genType, implTemplate),
 			dest:     filepath.Join(baseDir, data.SnakeName+"_"+genType+".go"),
 			data:     data,
 		},
 		{
-			template: filepath.Join("templates", "generate", genType, testTemplate),
+			template: filepath.Join("templates", genType, testTemplate),
 			dest:     filepath.Join(baseDir, data.SnakeName+"_"+genType+"_test.go"),
 			data:     data,
 		},
@@ -464,15 +474,15 @@ func buildStandaloneControllerFiles(componentName string) []genFile {
 func buildSchedulerFiles(componentName, baseDir string) []genFile {
 	data := generator.NewData(componentName)
 	files := []genFile{
-		{template: "templates/generate/scheduler/job.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_job.go"), data: data},
-		{template: "templates/generate/scheduler/scheduler.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_scheduler.go"), data: data},
-		{template: "templates/generate/scheduler/scheduler_test.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_scheduler_test.go"), data: data},
+		{template: "templates/scheduler/job.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_job.go"), data: data},
+		{template: "templates/scheduler/scheduler.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_scheduler.go"), data: data},
+		{template: "templates/scheduler/scheduler_test.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_scheduler_test.go"), data: data},
 	}
 
 	runtimePath := filepath.Join(baseDir, "in_memory_scheduler.go")
 	if !generator.FileExists(runtimePath) {
 		files = append(files, genFile{
-			template: "templates/generate/scheduler/in_memory_scheduler.go.tmpl",
+			template: "templates/scheduler/in_memory_scheduler.go.tmpl",
 			dest:     runtimePath,
 			data:     data,
 		})
@@ -481,7 +491,7 @@ func buildSchedulerFiles(componentName, baseDir string) []genFile {
 	runtimeTestPath := filepath.Join(baseDir, "in_memory_scheduler_test.go")
 	if !generator.FileExists(runtimeTestPath) {
 		files = append(files, genFile{
-			template: "templates/generate/scheduler/in_memory_scheduler_test.go.tmpl",
+			template: "templates/scheduler/in_memory_scheduler_test.go.tmpl",
 			dest:     runtimeTestPath,
 			data:     data,
 		})
@@ -493,9 +503,9 @@ func buildSchedulerFiles(componentName, baseDir string) []genFile {
 func buildEventFiles(componentName, baseDir string) []genFile {
 	data := generator.NewData(componentName)
 	return []genFile{
-		{template: "templates/generate/event/publisher.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_publisher.go"), data: data},
-		{template: "templates/generate/event/subscriber.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_subscriber.go"), data: data},
-		{template: "templates/generate/event/event_test.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_event_test.go"), data: data},
+		{template: "templates/event/publisher.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_publisher.go"), data: data},
+		{template: "templates/event/subscriber.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_subscriber.go"), data: data},
+		{template: "templates/event/event_test.go.tmpl", dest: filepath.Join(baseDir, data.SnakeName+"_event_test.go"), data: data},
 	}
 }
 
@@ -537,7 +547,7 @@ func regenerateModuleRegistry(moduleName string) error {
 
 	dest := moduleRegistryPath(moduleName)
 	alreadyExisted := generator.FileExists(dest)
-	if err := generator.RenderToFile("templates/generate/module/module.go.tmpl", dest, moduleData); err != nil {
+	if err := generator.RenderToFile("templates/module/module.go.tmpl", dest, moduleData); err != nil {
 		return err
 	}
 	if alreadyExisted {

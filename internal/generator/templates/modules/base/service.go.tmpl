@@ -1,14 +1,10 @@
 package {{.PackageName}}
 
-import (
-	"context"
-
-	"github.com/slice-soft/ss-keel-core/logger"
-)
+import "github.com/slice-soft/ss-keel-core/logger"
 
 type {{.PascalName}}Service struct {
 	repository any
-	log        *logger.Logger
+	log *logger.Logger
 }
 
 func New{{.PascalName}}Service(log *logger.Logger) *{{.PascalName}}Service {
@@ -22,10 +18,12 @@ func New{{.PascalName}}ServiceWithRepository(repository any, log *logger.Logger)
 	}
 }
 
-func (s *{{.PascalName}}Service) Execute(ctx context.Context) error {
-	_ = ctx
+func (s *{{.PascalName}}Service) Hello() {{.PascalName}}ResponseDTO {
 	if s.log != nil {
-		s.log.Info("executing {{.KebabName}} service")
+		s.log.Info("processing {{.KebabName}} hello endpoint")
 	}
-	return nil
+
+	return {{.PascalName}}ResponseDTO{
+		Message: "hello",
+	}
 }
