@@ -3,7 +3,7 @@ package scheduler
 import (
 	"testing"
 
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/contracts"
 )
 
 func TestInMemoryScheduler(t *testing.T) {
@@ -12,7 +12,7 @@ func TestInMemoryScheduler(t *testing.T) {
 		t.Fatal("expected scheduler instance")
 	}
 
-	if err := s.Add(core.Job{Name: "demo"}); err != nil {
+	if err := s.Add(contracts.Job{Name: "demo"}); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
 

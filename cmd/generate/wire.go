@@ -115,12 +115,15 @@ func ensureStandaloneControllerRegisteredInMain(componentName string) error {
 
 func ensureInlineStandaloneControllerRegisteredInMain(componentName string) error {
 	data := generator.NewData(componentName)
-	routeLine := fmt.Sprintf("\t\t\tcore.GET(%q, func(c *core.Ctx) error {\n\t\t\t\treturn c.OK(map[string]string{\"component\": %q})\n\t\t\t}).\n\t\t\t\tTag(%q).\n\t\t\t\tDescribe(%q),", "/"+data.KebabName, data.KebabName, data.KebabName, "Handle "+data.KebabName+" endpoint")
-	registerLine := "\tapp.RegisterController(core.ControllerFunc(func() []core.Route {\n\t\treturn []core.Route{\n" + routeLine + "\n\t\t}\n\t}))"
+	routeLine := fmt.Sprintf("\t\t\thttpx.GET(%q, func(c *httpx.Ctx) error {\n\t\t\t\treturn c.OK(map[string]string{\"component\": %q})\n\t\t\t}).\n\t\t\t\tTag(%q).\n\t\t\t\tDescribe(%q),", "/"+data.KebabName, data.KebabName, data.KebabName, "Handle "+data.KebabName+" endpoint")
+	registerLine := "\tapp.RegisterController(contracts.ControllerFunc[httpx.Route](func() []httpx.Route {\n\t\treturn []httpx.Route{\n" + routeLine + "\n\t\t}\n\t}))"
 
 	return updateMainGo(func(content string) string {
-		if !strings.Contains(content, "\"github.com/slice-soft/ss-keel-core/core\"") {
-			content = addImport(content, "\"github.com/slice-soft/ss-keel-core/core\"")
+		if !strings.Contains(content, "\"github.com/slice-soft/ss-keel-core/contracts\"") {
+			content = addImport(content, "\"github.com/slice-soft/ss-keel-core/contracts\"")
+		}
+		if !strings.Contains(content, "\"github.com/slice-soft/ss-keel-core/core/httpx\"") {
+			content = addImport(content, "\"github.com/slice-soft/ss-keel-core/core/httpx\"")
 		}
 		if !strings.Contains(content, "/"+data.KebabName) {
 			content = addMainLine(content, registerLine)

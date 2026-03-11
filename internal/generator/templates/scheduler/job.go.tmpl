@@ -3,12 +3,12 @@ package scheduler
 import (
 	"context"
 
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/contracts"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
-func New{{.PascalName}}Job(log *logger.Logger) core.Job {
-	return core.Job{
+func New{{.PascalName}}Job(log *logger.Logger) contracts.Job {
+	return contracts.Job{
 		Name:     "{{.KebabName}}",
 		Schedule: "* * * * *",
 		Handler: func(ctx context.Context) error {

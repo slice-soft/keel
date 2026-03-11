@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/slice-soft/ss-keel-core/core"
+	"github.com/slice-soft/ss-keel-core/contracts"
 	"github.com/slice-soft/ss-keel-core/logger"
 )
 
@@ -12,7 +12,7 @@ type {{.CamelName}}SchedulerStub struct {
 	added int
 }
 
-func (s *{{.CamelName}}SchedulerStub) Add(job core.Job) error {
+func (s *{{.CamelName}}SchedulerStub) Add(job contracts.Job) error {
 	s.added++
 	if job.Name == "" {
 		return context.Canceled
