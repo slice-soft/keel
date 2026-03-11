@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/slice-soft/keel/compare/v1.3.1...v1.3.2) (2026-03-11)
+
+
+### Bug Fixes
+
+* update imports to use contracts package and adjust related types ([#15](https://github.com/slice-soft/keel/issues/15)) ([1d3d5b7](https://github.com/slice-soft/keel/commit/1d3d5b76a32a433e6413b1430f9f202c75130e1c))
+
 ## [1.3.1](https://github.com/slice-soft/keel/compare/v1.3.0...v1.3.1) (2026-03-11)
 
 
