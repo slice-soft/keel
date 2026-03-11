@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/slice-soft/keel/compare/v1.3.0...v1.3.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* support mongo ([#13](https://github.com/slice-soft/keel/issues/13)) ([f782215](https://github.com/slice-soft/keel/commit/f7822151746b7bcdacc22ccf259efa1cd09d9bea))
+
 ## [1.3.0](https://github.com/slice-soft/keel/compare/v1.2.1...v1.3.0) (2026-03-08)
 
 
