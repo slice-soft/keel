@@ -128,6 +128,54 @@ func TestGenerateModuleDefaultsAndAlias(t *testing.T) {
 	}
 }
 
+func TestGenerateModuleTestKeptInSyncWithModuleSignature(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	ensurePersistenceAddonInstalledFn = func(_ repositoryBackend) error { return nil }
+
+	if err := execute("module", "orders", Options{UseGormPersistence: true}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+
+	moduleTestContent := mustRead(t, filepath.Join(root, "internal", "modules", "orders", "orders_module_test.go"))
+	if !strings.Contains(moduleTestContent, "NewModule(logger.NewLogger(false), nil)") {
+		t.Fatalf("expected module_test.go to pass nil db arg after gorm module generation, got:\n%s", moduleTestContent)
+	}
+}
+
+func TestGenerateMongoModuleTestKeptInSyncWithModuleSignature(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	ensurePersistenceAddonInstalledFn = func(_ repositoryBackend) error { return nil }
+
+	if err := execute("module", "orders", Options{UseMongoPersistence: true}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+
+	moduleTestContent := mustRead(t, filepath.Join(root, "internal", "modules", "orders", "orders_module_test.go"))
+	if !strings.Contains(moduleTestContent, "NewModule(logger.NewLogger(false), nil)") {
+		t.Fatalf("expected module_test.go to pass nil mongoClient arg after mongo module generation, got:\n%s", moduleTestContent)
+	}
+}
+
 func TestGenerateTransactionalModuleWithGormPersistence(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
@@ -200,11 +248,11 @@ func TestGenerateModuleWithGormFlagWiresDatabaseInMain(t *testing.T) {
 	}
 
 	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_entity.go"))
-	if strings.Contains(entityContent, "gorm:\"") {
-		t.Fatalf("did not expect gorm tags in the domain entity, got:\n%s", entityContent)
+	if !strings.Contains(entityContent, "database.EntityBase") {
+		t.Fatalf("expected entity to embed database.EntityBase, got:\n%s", entityContent)
 	}
-	if strings.Contains(entityContent, "github.com/slice-soft/ss-keel-gorm") {
-		t.Fatalf("did not expect gorm imports in the domain entity, got:\n%s", entityContent)
+	if !strings.Contains(entityContent, "github.com/slice-soft/ss-keel-gorm/database") {
+		t.Fatalf("expected gorm database import in entity, got:\n%s", entityContent)
 	}
 
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
@@ -257,8 +305,14 @@ func TestGenerateModuleWithMongoFlagWiresDatabaseInMain(t *testing.T) {
 	}
 
 	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_entity.go"))
-	if strings.Contains(entityContent, "primitive.ObjectID") || strings.Contains(entityContent, "bson:\"") {
-		t.Fatalf("did not expect mongo persistence details in the domain entity, got:\n%s", entityContent)
+	if strings.Contains(entityContent, "primitive.ObjectID") {
+		t.Fatalf("did not expect ObjectID in the domain entity, got:\n%s", entityContent)
+	}
+	if !strings.Contains(entityContent, "mongo.EntityBase") {
+		t.Fatalf("expected entity to embed mongo.EntityBase, got:\n%s", entityContent)
+	}
+	if !strings.Contains(entityContent, "github.com/slice-soft/ss-keel-mongo/mongo") {
+		t.Fatalf("expected mongo import in entity, got:\n%s", entityContent)
 	}
 
 	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_repository.go"))
