@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/slice-soft/keel/compare/v1.3.2...v1.4.0) (2026-03-12)
+
+
+### Features
+
+* enhance module generation with test file creation and update entity templates ([#17](https://github.com/slice-soft/keel/issues/17)) ([88e0a9d](https://github.com/slice-soft/keel/commit/88e0a9dd10c647ac8826d3e27bb4a4bd9b735cb3))
+
 ## [1.3.2](https://github.com/slice-soft/keel/compare/v1.3.1...v1.3.2) (2026-03-11)
 
 
