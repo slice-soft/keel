@@ -1,6 +1,10 @@
 package {{.PackageName}}
 
+import "github.com/slice-soft/ss-keel-mongo/mongo"
+
+// {{.PascalName}}Entity is the domain entity for this module.
+// mongo.EntityBase provides ID, CreatedAt and UpdatedAt with BSON tags pre-configured.
 type {{.PascalName}}Entity struct {
-	ID   string
-	Name string
+	mongo.EntityBase
+	Name string `json:"name" bson:"name"`
 }

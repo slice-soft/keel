@@ -17,8 +17,10 @@ type {{.PascalName}}RepositoryContract interface {
 }
 
 type {{.PascalName}}MongoDocument struct {
-	ID   primitive.ObjectID `bson:"_id,omitempty"`
-	Name string             `bson:"name"`
+	ID        primitive.ObjectID `bson:"_id,omitempty"`
+	CreatedAt int64              `bson:"created_at"`
+	UpdatedAt int64              `bson:"updated_at"`
+	Name      string             `bson:"name"`
 }
 
 type {{.PascalName}}Repository struct {
@@ -68,6 +70,8 @@ func (r *{{.PascalName}}Repository) FindAll(ctx context.Context, q httpx.PageQue
 }
 
 func (r *{{.PascalName}}Repository) Create(ctx context.Context, entity *{{.PascalName}}Entity) error {
+	entity.OnCreate()
+
 	document, err := to{{.PascalName}}MongoDocument(entity)
 	if err != nil {
 		return err
@@ -85,6 +89,8 @@ func (r *{{.PascalName}}Repository) Create(ctx context.Context, entity *{{.Pasca
 }
 
 func (r *{{.PascalName}}Repository) Update(ctx context.Context, id string, entity *{{.PascalName}}Entity) error {
+	entity.OnUpdate()
+
 	normalizedID, err := normalize{{.PascalName}}ID(id)
 	if err != nil {
 		return err
@@ -121,7 +127,9 @@ func to{{.PascalName}}MongoDocument(entity *{{.PascalName}}Entity) ({{.PascalNam
 	}
 
 	document := {{.PascalName}}MongoDocument{
-		Name: entity.Name,
+		CreatedAt: entity.CreatedAt,
+		UpdatedAt: entity.UpdatedAt,
+		Name:      entity.Name,
 	}
 
 	if trimmedID := strings.TrimSpace(entity.ID); trimmedID != "" {
@@ -137,7 +145,11 @@ func to{{.PascalName}}MongoDocument(entity *{{.PascalName}}Entity) ({{.PascalNam
 
 func to{{.PascalName}}Entity(document {{.PascalName}}MongoDocument) {{.PascalName}}Entity {
 	return {{.PascalName}}Entity{
-		ID:   document.ID.Hex(),
+		EntityBase: mongo.EntityBase{
+			ID:        document.ID.Hex(),
+			CreatedAt: document.CreatedAt,
+			UpdatedAt: document.UpdatedAt,
+		},
 		Name: document.Name,
 	}
 }

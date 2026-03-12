@@ -1,6 +1,10 @@
 package {{.PackageName}}
 
+import "github.com/slice-soft/ss-keel-gorm/database"
+
+// {{.PascalName}}Entity is the domain entity for this module.
+// database.EntityBase provides ID, CreatedAt and UpdatedAt with GORM tags pre-configured.
 type {{.PascalName}}Entity struct {
-	ID   string
-	Name string
+	database.EntityBase
+	Name string `json:"name"`
 }

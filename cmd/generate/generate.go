@@ -558,6 +558,17 @@ func regenerateModuleRegistry(moduleName string) error {
 	} else {
 		logCreated(dest)
 	}
+
+	testDest := filepath.Join(moduleDir(moduleName), moduleData.SnakeName+"_module_test.go")
+	testAlreadyExisted := generator.FileExists(testDest)
+	if err := generator.RenderToFile("templates/module/module_test.go.tmpl", testDest, moduleData); err != nil {
+		return err
+	}
+	if testAlreadyExisted {
+		logUpdated(testDest)
+	} else {
+		logCreated(testDest)
+	}
 	return nil
 }
 
