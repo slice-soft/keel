@@ -13,6 +13,7 @@ type {{.PascalName}}ServiceContract interface {
 	GetByID(ctx context.Context, id string) (*{{.PascalName}}ResponseDTO, error)
 	Create(ctx context.Context, req Create{{.PascalName}}RequestDTO) (*{{.PascalName}}ResponseDTO, error)
 	Update(ctx context.Context, id string, req Update{{.PascalName}}RequestDTO) (*{{.PascalName}}ResponseDTO, error)
+	Patch(ctx context.Context, id string, req Patch{{.PascalName}}RequestDTO) (*{{.PascalName}}ResponseDTO, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -42,10 +43,15 @@ func (c *{{.PascalName}}Controller) Routes() []httpx.Route {
 			Describe("Create {{.KebabName}}").
 			WithBody(httpx.WithBody[Create{{.PascalName}}RequestDTO]()).
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](201)),
-		httpx.PATCH("/{{.KebabName}}/:id", c.Update).
+		httpx.PUT("/{{.KebabName}}/:id", c.Update).
 			Tag("{{.KebabName}}").
-			Describe("Update {{.KebabName}}").
+			Describe("Full replace {{.KebabName}} (HTTP PUT — all fields required)").
 			WithBody(httpx.WithBody[Update{{.PascalName}}RequestDTO]()).
+			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
+		httpx.PATCH("/{{.KebabName}}/:id", c.Patch).
+			Tag("{{.KebabName}}").
+			Describe("Partial update {{.KebabName}} (HTTP PATCH — only provided fields are written)").
+			WithBody(httpx.WithBody[Patch{{.PascalName}}RequestDTO]()).
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
 		httpx.DELETE("/{{.KebabName}}/:id", c.Delete).
 			Tag("{{.KebabName}}").
@@ -109,6 +115,24 @@ func (c *{{.PascalName}}Controller) Update(ctx *httpx.Ctx) error {
 	}
 
 	item, err := svc.Update(ctx.UserContext(), ctx.Params("id"), req)
+	if err != nil {
+		return err
+	}
+	return ctx.OK(item)
+}
+
+func (c *{{.PascalName}}Controller) Patch(ctx *httpx.Ctx) error {
+	svc, err := c.service()
+	if err != nil {
+		return err
+	}
+
+	var req Patch{{.PascalName}}RequestDTO
+	if err := ctx.ParseBody(&req); err != nil {
+		return err
+	}
+
+	item, err := svc.Patch(ctx.UserContext(), ctx.Params("id"), req)
 	if err != nil {
 		return err
 	}

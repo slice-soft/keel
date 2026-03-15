@@ -284,6 +284,11 @@ func ensureAppLoggerBootstrap(content string) string {
 }
 
 func ensureGormDatabaseBootstrap(content string) string {
+	// If the keel add gorm addon already set up setupDatabase(), reuse that variable.
+	if strings.Contains(content, "setupDatabase(") {
+		return content
+	}
+
 	databaseImport := "\"github.com/slice-soft/ss-keel-gorm/database\""
 	if !strings.Contains(content, databaseImport) {
 		content = addImport(content, databaseImport)
@@ -298,6 +303,11 @@ func ensureGormDatabaseBootstrap(content string) string {
 }
 
 func ensureMongoDatabaseBootstrap(content string) string {
+	// If the keel add mongo addon already set up setupMongo(), reuse that variable.
+	if strings.Contains(content, "setupMongo(") {
+		return content
+	}
+
 	mongoImport := "\"github.com/slice-soft/ss-keel-mongo/mongo\""
 	if !strings.Contains(content, mongoImport) {
 		content = addImport(content, mongoImport)

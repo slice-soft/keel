@@ -71,11 +71,62 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Resolve and offer to install declared dependencies before the addon itself.
+	if err := handleDependencies(manifest.DependsOn, reg); err != nil {
+		return err
+	}
+
 	if err := installAddonFn(manifest); err != nil {
 		return err
 	}
 
 	fmt.Printf("\n  ✓ %s installed successfully\n\n", manifest.Name)
+	return nil
+}
+
+// handleDependencies checks whether the addons listed in depends_on are already
+// installed (present in go.mod) and, if not, offers to install them first.
+func handleDependencies(deps []string, reg *addon.Registry) error {
+	if len(deps) == 0 {
+		return nil
+	}
+
+	goMod, err := os.ReadFile("go.mod")
+	if err != nil {
+		return nil // can't read go.mod — skip silently
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+
+	for _, dep := range deps {
+		depRepo, _ := resolveRepo(dep, reg)
+
+		// Dependency already installed — nothing to do.
+		if strings.Contains(string(goMod), depRepo) {
+			continue
+		}
+
+		fmt.Printf("\n  ℹ  This addon depends on %q which is not installed yet.\n", dep)
+		fmt.Printf("     Install %q now? [Y/n] ", dep)
+
+		answer, _ := reader.ReadString('\n')
+		if strings.ToLower(strings.TrimSpace(answer)) == "n" {
+			fmt.Printf("  ⚠  Skipped dependency %q — run 'keel add %s' before using this addon.\n", dep, dep)
+			continue
+		}
+
+		fmt.Printf("\n  Installing dependency %s...\n\n", depRepo)
+
+		depManifest, err := fetchManifestFn(depRepo)
+		if err != nil {
+			return fmt.Errorf("failed to fetch dependency %q: %w", dep, err)
+		}
+		if err := installAddonFn(depManifest); err != nil {
+			return fmt.Errorf("failed to install dependency %q: %w", dep, err)
+		}
+
+		fmt.Printf("\n  ✓ dependency %s installed\n", dep)
+	}
 	return nil
 }
 

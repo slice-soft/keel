@@ -14,6 +14,7 @@ import (
 
 type {{.PascalName}}RepositoryContract interface {
 	contracts.Repository[{{.PascalName}}Entity, string, httpx.PageQuery, httpx.Page[{{.PascalName}}Entity]]
+	Patch(ctx context.Context, id string, patch *{{.PascalName}}Entity) error
 }
 
 type {{.PascalName}}MongoDocument struct {
@@ -88,6 +89,7 @@ func (r *{{.PascalName}}Repository) Create(ctx context.Context, entity *{{.Pasca
 	return nil
 }
 
+// Update replaces all fields of the document (HTTP PUT semantics).
 func (r *{{.PascalName}}Repository) Update(ctx context.Context, id string, entity *{{.PascalName}}Entity) error {
 	entity.OnUpdate()
 
@@ -111,6 +113,24 @@ func (r *{{.PascalName}}Repository) Update(ctx context.Context, id string, entit
 
 	entity.ID = document.ID.Hex()
 	return nil
+}
+
+// Patch applies a partial update — only the fields changed in entity are written (HTTP PATCH semantics).
+// The service merges the request fields into the existing entity before calling Patch.
+func (r *{{.PascalName}}Repository) Patch(ctx context.Context, id string, entity *{{.PascalName}}Entity) error {
+	entity.OnUpdate()
+
+	normalizedID, err := normalize{{.PascalName}}ID(id)
+	if err != nil {
+		return err
+	}
+
+	document, err := to{{.PascalName}}MongoDocument(entity)
+	if err != nil {
+		return err
+	}
+
+	return r.repo.Patch(ctx, normalizedID, document)
 }
 
 func (r *{{.PascalName}}Repository) Delete(ctx context.Context, id string) error {
