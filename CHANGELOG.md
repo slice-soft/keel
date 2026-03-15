@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/slice-soft/keel/compare/v1.4.0...v1.5.0) (2026-03-15)
+
+
+### Features
+
+* add support for dependency installation and partial updates in addons ([#19](https://github.com/slice-soft/keel/issues/19)) ([a36c190](https://github.com/slice-soft/keel/commit/a36c19094d99261f4c5f5349cd63923cbd72e8cf))
+
 ## [1.4.0](https://github.com/slice-soft/keel/compare/v1.3.2...v1.4.0) (2026-03-12)
 
 
