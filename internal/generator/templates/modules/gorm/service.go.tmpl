@@ -88,7 +88,39 @@ func (s *{{.PascalName}}Service) Create(ctx context.Context, req Create{{.Pascal
 	return &response, nil
 }
 
+// Update replaces all fields of the record (HTTP PUT semantics).
+// All fields in the request are required.
 func (s *{{.PascalName}}Service) Update(ctx context.Context, id string, req Update{{.PascalName}}RequestDTO) (*{{.PascalName}}ResponseDTO, error) {
+	repository, err := s.repo()
+	if err != nil {
+		return nil, err
+	}
+
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, core.BadRequest("invalid {{.KebabName}} id")
+	}
+
+	entity, err := repository.FindByID(ctx, id)
+	if err != nil {
+		return nil, core.Internal("failed to get {{.KebabName}}", err)
+	}
+	if entity == nil {
+		return nil, core.NotFound("{{.KebabName}} not found")
+	}
+
+	entity.Name = strings.TrimSpace(req.Name)
+
+	if err := repository.Update(ctx, id, entity); err != nil {
+		return nil, core.Internal("failed to update {{.KebabName}}", err)
+	}
+
+	response := to{{.PascalName}}Response(*entity)
+	return &response, nil
+}
+
+// Patch applies a partial update — only the non-nil fields in the request are written (HTTP PATCH semantics).
+func (s *{{.PascalName}}Service) Patch(ctx context.Context, id string, req Patch{{.PascalName}}RequestDTO) (*{{.PascalName}}ResponseDTO, error) {
 	repository, err := s.repo()
 	if err != nil {
 		return nil, err
@@ -111,8 +143,8 @@ func (s *{{.PascalName}}Service) Update(ctx context.Context, id string, req Upda
 		entity.Name = strings.TrimSpace(*req.Name)
 	}
 
-	if err := repository.Update(ctx, id, entity); err != nil {
-		return nil, core.Internal("failed to update {{.KebabName}}", err)
+	if err := repository.Patch(ctx, id, entity); err != nil {
+		return nil, core.Internal("failed to patch {{.KebabName}}", err)
 	}
 
 	response := to{{.PascalName}}Response(*entity)

@@ -4,7 +4,13 @@ type Create{{.PascalName}}RequestDTO struct {
 	Name string `json:"name" validate:"required"`
 }
 
+// Update{{.PascalName}}RequestDTO is used for HTTP PUT — all fields are required and the record is fully replaced.
 type Update{{.PascalName}}RequestDTO struct {
+	Name string `json:"name" validate:"required"`
+}
+
+// Patch{{.PascalName}}RequestDTO is used for HTTP PATCH — all fields are optional; only non-nil fields are written.
+type Patch{{.PascalName}}RequestDTO struct {
 	Name *string `json:"name"`
 }
 

@@ -5,6 +5,7 @@ import (
 	"go/format"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -35,6 +36,8 @@ func runStep(s Step, addonName string) error {
 		return stepMainImport(s)
 	case "main_code":
 		return stepMainCode(s)
+	case "create_provider_file":
+		return stepCreateProviderFile(s)
 	default:
 		return fmt.Errorf("unknown step type %q in %s", s.Type, addonName)
 	}
@@ -176,4 +179,42 @@ func addMainLine(content, line string) string {
 		}
 	}
 	return content
+}
+
+// stepCreateProviderFile creates a dedicated Go file (e.g. cmd/setup_jwt.go) that
+// holds an addon initializer function, keeping cmd/main.go slim.
+// If the file already exists and contains the guard string, the step is skipped.
+func stepCreateProviderFile(s Step) error {
+	if s.Filename == "" {
+		return fmt.Errorf("create_provider_file step is missing 'filename'")
+	}
+	if s.Content == "" {
+		return fmt.Errorf("create_provider_file step is missing 'content'")
+	}
+
+	// Skip if already created (idempotent).
+	if s.Guard != "" {
+		if existing, err := os.ReadFile(s.Filename); err == nil {
+			if strings.Contains(string(existing), s.Guard) {
+				return nil
+			}
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Dir(s.Filename), 0755); err != nil {
+		return fmt.Errorf("could not create directory for %s: %w", s.Filename, err)
+	}
+
+	// Format the Go source so gofmt is always satisfied.
+	src := []byte(s.Content)
+	if formatted, err := format.Source(src); err == nil {
+		src = formatted
+	}
+
+	if err := os.WriteFile(s.Filename, src, 0644); err != nil {
+		return fmt.Errorf("could not write %s: %w", s.Filename, err)
+	}
+
+	fmt.Printf("  → created %s\n", s.Filename)
+	return nil
 }
