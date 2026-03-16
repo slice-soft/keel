@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/slice-soft/keel/compare/v1.5.0...v1.6.0) (2026-03-16)
+
+
+### Features
+
+* enhance module generation to use plural routes and improve entity templates ([#21](https://github.com/slice-soft/keel/issues/21)) ([1a903c2](https://github.com/slice-soft/keel/commit/1a903c2e62183e3e6f5b4b2cc53dab26d36b6222))
+
 ## [1.5.0](https://github.com/slice-soft/keel/compare/v1.4.0...v1.5.0) (2026-03-15)
 
 
