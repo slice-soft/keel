@@ -243,13 +243,24 @@ func buildRepositoryFiles(componentName, baseDir, packageOverride string, reposi
 	entityDest := filepath.Join(baseDir, data.SnakeName+"_entity.go")
 	if !generator.FileExists(entityDest) {
 		files = append(files, genFile{
-			template: "templates/repository/entity.go.tmpl",
+			template: repositoryEntityTemplateForBackend(repositoryChoice),
 			dest:     entityDest,
 			data:     data,
 		})
 	}
 
 	return append(files, repositoryFilesForBackend(componentName, baseDir, packageOverride, repositoryChoice, true)...)
+}
+
+func repositoryEntityTemplateForBackend(repositoryChoice repositoryBackend) string {
+	switch repositoryChoice {
+	case repositoryBackendGorm:
+		return "templates/modules/gorm/entity.go.tmpl"
+	case repositoryBackendMongo:
+		return "templates/modules/mongo/entity.go.tmpl"
+	default:
+		return "templates/repository/entity.go.tmpl"
+	}
 }
 
 func generateStandalone(genType, componentName string, opts Options) error {

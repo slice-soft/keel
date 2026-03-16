@@ -16,6 +16,7 @@ type Data struct {
 	PascalName         string // Users
 	CamelName          string // users
 	KebabName          string // users
+	PluralKebabName    string // users
 	SnakeName          string // users
 	CoreVersion        string // github.com/slice-soft/ss-keel-core v1.2.3
 	UsesDatabase       bool
@@ -44,11 +45,12 @@ type ComponentRegistration struct {
 func NewData(name string) Data {
 	pascal := toPascal(name)
 	return Data{
-		PackageName: toPackage(name),
-		PascalName:  pascal,
-		CamelName:   toCamel(pascal),
-		KebabName:   toKebab(name),
-		SnakeName:   toSnake(name),
+		PackageName:     toPackage(name),
+		PascalName:      pascal,
+		CamelName:       toCamel(pascal),
+		KebabName:       toKebab(name),
+		PluralKebabName: toPluralKebab(name),
+		SnakeName:       toSnake(name),
 	}
 }
 

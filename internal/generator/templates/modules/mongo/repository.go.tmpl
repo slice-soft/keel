@@ -14,7 +14,6 @@ import (
 
 type {{.PascalName}}RepositoryContract interface {
 	contracts.Repository[{{.PascalName}}Entity, string, httpx.PageQuery, httpx.Page[{{.PascalName}}Entity]]
-	Patch(ctx context.Context, id string, patch *{{.PascalName}}Entity) error
 }
 
 type {{.PascalName}}MongoDocument struct {

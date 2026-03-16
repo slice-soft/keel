@@ -21,7 +21,7 @@ func New{{.PascalName}}Controller(svc {{.PascalName}}ServiceContract, log *logge
 
 func (c *{{.PascalName}}Controller) Routes() []httpx.Route {
 	return []httpx.Route{
-		httpx.GET("/{{.KebabName}}", c.Hello).
+		httpx.GET("/{{.PluralKebabName}}", c.Hello).
 			Tag("{{.KebabName}}").
 			Describe("{{.PascalName}} hello route").
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
