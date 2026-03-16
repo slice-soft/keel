@@ -28,32 +28,32 @@ func New{{.PascalName}}Controller(svc {{.PascalName}}ServiceContract, log *logge
 
 func (c *{{.PascalName}}Controller) Routes() []httpx.Route {
 	return []httpx.Route{
-		httpx.GET("/{{.KebabName}}", c.List).
+		httpx.GET("/{{.PluralKebabName}}", c.List).
 			Tag("{{.KebabName}}").
 			Describe("List {{.KebabName}}").
 			WithQueryParam("page", "integer", false, "Page number (default 1)").
 			WithQueryParam("limit", "integer", false, "Page size (default 20, max 100)").
 			WithResponse(httpx.WithResponse[httpx.Page[{{.PascalName}}ResponseDTO]](200)),
-		httpx.GET("/{{.KebabName}}/:id", c.GetByID).
+		httpx.GET("/{{.PluralKebabName}}/:id", c.GetByID).
 			Tag("{{.KebabName}}").
 			Describe("Get {{.KebabName}} by ID").
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
-		httpx.POST("/{{.KebabName}}", c.Create).
+		httpx.POST("/{{.PluralKebabName}}", c.Create).
 			Tag("{{.KebabName}}").
 			Describe("Create {{.KebabName}}").
 			WithBody(httpx.WithBody[Create{{.PascalName}}RequestDTO]()).
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](201)),
-		httpx.PUT("/{{.KebabName}}/:id", c.Update).
+		httpx.PUT("/{{.PluralKebabName}}/:id", c.Update).
 			Tag("{{.KebabName}}").
 			Describe("Full replace {{.KebabName}} (HTTP PUT — all fields required)").
 			WithBody(httpx.WithBody[Update{{.PascalName}}RequestDTO]()).
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
-		httpx.PATCH("/{{.KebabName}}/:id", c.Patch).
+		httpx.PATCH("/{{.PluralKebabName}}/:id", c.Patch).
 			Tag("{{.KebabName}}").
 			Describe("Partial update {{.KebabName}} (HTTP PATCH — only provided fields are written)").
 			WithBody(httpx.WithBody[Patch{{.PascalName}}RequestDTO]()).
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
-		httpx.DELETE("/{{.KebabName}}/:id", c.Delete).
+		httpx.DELETE("/{{.PluralKebabName}}/:id", c.Delete).
 			Tag("{{.KebabName}}").
 			Describe("Delete {{.KebabName}}"),
 	}

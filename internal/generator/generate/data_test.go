@@ -10,6 +10,7 @@ func TestNewData(t *testing.T) {
 		wantPascal  string
 		wantCamel   string
 		wantKebab   string
+		wantPlural  string
 		wantSnake   string
 	}{
 		{
@@ -19,6 +20,7 @@ func TestNewData(t *testing.T) {
 			wantPascal:  "Users",
 			wantCamel:   "users",
 			wantKebab:   "users",
+			wantPlural:  "users",
 			wantSnake:   "users",
 		},
 		{
@@ -28,6 +30,7 @@ func TestNewData(t *testing.T) {
 			wantPascal:  "UserProfile",
 			wantCamel:   "userProfile",
 			wantKebab:   "user-profile",
+			wantPlural:  "user-profiles",
 			wantSnake:   "user_profile",
 		},
 		{
@@ -37,6 +40,7 @@ func TestNewData(t *testing.T) {
 			wantPascal:  "UserProfileService",
 			wantCamel:   "userProfileService",
 			wantKebab:   "user-profile-service",
+			wantPlural:  "user-profile-services",
 			wantSnake:   "user_profile_service",
 		},
 	}
@@ -55,6 +59,9 @@ func TestNewData(t *testing.T) {
 			}
 			if got.KebabName != tt.wantKebab {
 				t.Fatalf("KebabName: expected %q, got %q", tt.wantKebab, got.KebabName)
+			}
+			if got.PluralKebabName != tt.wantPlural {
+				t.Fatalf("PluralKebabName: expected %q, got %q", tt.wantPlural, got.PluralKebabName)
 			}
 			if got.SnakeName != tt.wantSnake {
 				t.Fatalf("SnakeName: expected %q, got %q", tt.wantSnake, got.SnakeName)

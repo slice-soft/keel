@@ -128,6 +128,27 @@ func TestGenerateModuleDefaultsAndAlias(t *testing.T) {
 	}
 }
 
+func TestGenerateBaseModuleUsesPluralRouteForSingularName(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	if err := execute("module", "user", Options{}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+
+	controllerContent := mustRead(t, filepath.Join(root, "internal", "modules", "user", "user_controller.go"))
+	if !strings.Contains(controllerContent, `httpx.GET("/users", c.Hello)`) {
+		t.Fatalf("expected singular module route to be pluralized, got:\n%s", controllerContent)
+	}
+}
+
 func TestGenerateModuleTestKeptInSyncWithModuleSignature(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
@@ -255,6 +276,19 @@ func TestGenerateModuleWithGormFlagWiresDatabaseInMain(t *testing.T) {
 		t.Fatalf("expected gorm database import in entity, got:\n%s", entityContent)
 	}
 
+	serviceContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_service.go"))
+	if strings.Contains(serviceContent, "uuid.NewString()") {
+		t.Fatalf("did not expect service to generate UUIDs, got:\n%s", serviceContent)
+	}
+	if !strings.Contains(serviceContent, "entity := &PaymentsEntity{\n\t\tName: strings.TrimSpace(req.Name),\n\t}") {
+		t.Fatalf("expected service create flow to initialize only business fields, got:\n%s", serviceContent)
+	}
+
+	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_repository.go"))
+	if strings.Contains(repositoryContent, "\n\tPatch(ctx context.Context, id string,") {
+		t.Fatalf("did not expect repository contract to redeclare Patch, got:\n%s", repositoryContent)
+	}
+
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
 	if !strings.Contains(mainContent, "\"github.com/slice-soft/ss-keel-gorm/database\"") {
 		t.Fatalf("expected database import in main.go, got:\n%s", mainContent)
@@ -314,10 +348,16 @@ func TestGenerateModuleWithMongoFlagWiresDatabaseInMain(t *testing.T) {
 	if !strings.Contains(entityContent, "github.com/slice-soft/ss-keel-mongo/mongo") {
 		t.Fatalf("expected mongo import in entity, got:\n%s", entityContent)
 	}
+	if strings.Contains(entityContent, `bson:"name"`) {
+		t.Fatalf("did not expect mongo persistence tags in the domain entity, got:\n%s", entityContent)
+	}
 
 	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "payments", "payments_repository.go"))
 	if !strings.Contains(repositoryContent, "type PaymentsMongoDocument struct") {
 		t.Fatalf("expected mongo repository to keep its persistence document in the repository layer, got:\n%s", repositoryContent)
+	}
+	if strings.Contains(repositoryContent, "\n\tPatch(ctx context.Context, id string,") {
+		t.Fatalf("did not expect repository contract to redeclare Patch, got:\n%s", repositoryContent)
 	}
 
 	mainContent := mustRead(t, filepath.Join(root, "cmd", "main.go"))
@@ -329,6 +369,74 @@ func TestGenerateModuleWithMongoFlagWiresDatabaseInMain(t *testing.T) {
 	}
 	if !strings.Contains(mainContent, "app.Use(payments.NewModule(appLogger, mongoClient))") {
 		t.Fatalf("expected module registration with mongo client in main.go, got:\n%s", mainContent)
+	}
+}
+
+func TestGeneratePersistenceModulesUsePluralRestRoutes(t *testing.T) {
+	tests := []struct {
+		name  string
+		opts  Options
+		setup func(*testing.T)
+	}{
+		{
+			name: "gorm",
+			opts: Options{UseGormPersistence: true},
+			setup: func(t *testing.T) {
+				ensurePersistenceAddonInstalledFn = func(backend repositoryBackend) error {
+					if backend != repositoryBackendGorm {
+						t.Fatalf("unexpected backend: %s", backend)
+					}
+					return nil
+				}
+			},
+		},
+		{
+			name: "mongo",
+			opts: Options{UseMongoPersistence: true},
+			setup: func(t *testing.T) {
+				ensurePersistenceAddonInstalledFn = func(backend repositoryBackend) error {
+					if backend != repositoryBackendMongo {
+						t.Fatalf("unexpected backend: %s", backend)
+					}
+					return nil
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			oldWD, _ := os.Getwd()
+			defer func() { _ = os.Chdir(oldWD) }()
+
+			resetGenerateDeps(t)
+			seedProject(t, root)
+
+			if err := os.Chdir(root); err != nil {
+				t.Fatalf("chdir failed: %v", err)
+			}
+
+			tt.setup(t)
+
+			if err := execute("module", "user", tt.opts); err != nil {
+				t.Fatalf("generate module failed: %v", err)
+			}
+
+			controllerContent := mustRead(t, filepath.Join(root, "internal", "modules", "user", "user_controller.go"))
+			for _, want := range []string{
+				`httpx.GET("/users", c.List)`,
+				`httpx.GET("/users/:id", c.GetByID)`,
+				`httpx.POST("/users", c.Create)`,
+				`httpx.PUT("/users/:id", c.Update)`,
+				`httpx.PATCH("/users/:id", c.Patch)`,
+				`httpx.DELETE("/users/:id", c.Delete)`,
+			} {
+				if !strings.Contains(controllerContent, want) {
+					t.Fatalf("expected controller to contain %q, got:\n%s", want, controllerContent)
+				}
+			}
+		})
 	}
 }
 
@@ -399,6 +507,41 @@ func TestGenerateRepositoryCreatesSeparateEntityFile(t *testing.T) {
 	}
 }
 
+func TestGenerateGormRepositoryCreatesEntityWithDatabaseBase(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	ensurePersistenceAddonInstalledFn = func(backend repositoryBackend) error {
+		if backend != repositoryBackendGorm {
+			t.Fatalf("unexpected backend: %s", backend)
+		}
+		return nil
+	}
+
+	if err := execute("module", "billing", Options{}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+	if err := execute("repository", "billing/customer", Options{UseGormPersistence: true}); err != nil {
+		t.Fatalf("generate repository failed: %v", err)
+	}
+
+	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "customer_entity.go"))
+	if !strings.Contains(entityContent, "database.EntityBase") {
+		t.Fatalf("expected gorm repository entity to embed database.EntityBase, got:\n%s", entityContent)
+	}
+	if !strings.Contains(entityContent, "github.com/slice-soft/ss-keel-gorm/database") {
+		t.Fatalf("expected gorm repository entity to import the database package, got:\n%s", entityContent)
+	}
+}
+
 func TestGenerateMongoRepositoryCreatesSeparateEntityFile(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()
@@ -426,8 +569,14 @@ func TestGenerateMongoRepositoryCreatesSeparateEntityFile(t *testing.T) {
 	}
 
 	entityContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "customer_entity.go"))
-	if strings.Contains(entityContent, "primitive.ObjectID") || strings.Contains(entityContent, "bson:\"") {
-		t.Fatalf("did not expect persistence details in the generated domain entity, got:\n%s", entityContent)
+	if strings.Contains(entityContent, "primitive.ObjectID") || strings.Contains(entityContent, `bson:"name"`) {
+		t.Fatalf("did not expect persistence document details in the generated domain entity, got:\n%s", entityContent)
+	}
+	if !strings.Contains(entityContent, "mongo.EntityBase") {
+		t.Fatalf("expected mongo repository entity to embed mongo.EntityBase, got:\n%s", entityContent)
+	}
+	if !strings.Contains(entityContent, "github.com/slice-soft/ss-keel-mongo/mongo") {
+		t.Fatalf("expected mongo repository entity to import the mongo package, got:\n%s", entityContent)
 	}
 
 	repositoryContent := mustRead(t, filepath.Join(root, "internal", "modules", "billing", "customer_repository.go"))
