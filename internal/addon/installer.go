@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
 var execCommand = exec.Command
+var envPlaceholderPattern = regexp.MustCompile(`\{\{\s*([A-Z0-9_]+)\s*\}\}`)
 
 // Install executes all steps defined in the manifest inside the current Keel project.
 func Install(m *Manifest) error {
@@ -88,7 +90,7 @@ func stepEnv(s Step) error {
 		return nil // already set
 	}
 
-	line := s.Key + "=" + s.Example + "\n"
+	line := s.Key + "=" + expandEnvExample(s.Example, string(existing)) + "\n"
 	f, err := os.OpenFile(envFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -117,7 +119,7 @@ func stepMainImport(s Step) error {
 	})
 }
 
-// stepMainCode inserts a code block before app.Listen() in cmd/main.go.
+// stepMainCode inserts or rewrites a code block in cmd/main.go.
 // The guard field prevents duplicate insertion.
 func stepMainCode(s Step) error {
 	if s.Code == "" {
@@ -127,8 +129,15 @@ func stepMainCode(s Step) error {
 		if s.Guard != "" && strings.Contains(content, s.Guard) {
 			return content // already wired
 		}
+		if s.Replace != "" {
+			updated, replaced := replaceMainLine(content, s.Replace, "\t"+strings.ReplaceAll(s.Code, "\n", "\n\t"))
+			if replaced {
+				fmt.Printf("  → updated %s wiring in cmd/main.go\n", s.Replace)
+				return updated
+			}
+		}
 		fmt.Printf("  → wired %s into cmd/main.go\n", s.Guard)
-		return addMainLine(content, "\t"+strings.ReplaceAll(s.Code, "\n", "\n\t"))
+		return addMainLineWithAnchor(content, "\t"+strings.ReplaceAll(s.Code, "\n", "\n\t"), s.Anchor)
 	})
 }
 
@@ -166,19 +175,114 @@ func addImport(content, importPath string) string {
 }
 
 func addMainLine(content, line string) string {
+	return addMainLineWithAnchor(content, line, "before_listen")
+}
+
+func addMainLineWithAnchor(content, line, anchor string) string {
+	switch anchor {
+	case "", "before_listen":
+		return addMainLineBeforeMarkers(content, line, []string{
+			"\tlog.Fatal(app.Listen())",
+			"\tif err := app.Listen(); err != nil {",
+			"log.Fatal(app.Listen())",
+			"if err := app.Listen(); err != nil {",
+		})
+	case "before_modules":
+		if updated, ok := addMainLineBeforeMarkersIfFound(content, line, []string{
+			"\t// Register your modules here:",
+			"// Register your modules here:",
+			"\tapp.Use(",
+			"app.Use(",
+		}); ok {
+			return updated
+		}
+		return addMainLine(content, line)
+	default:
+		return addMainLine(content, line)
+	}
+}
+
+func addMainLineBeforeMarkers(content, line string, markers []string) string {
+	if updated, ok := addMainLineBeforeMarkersIfFound(content, line, markers); ok {
+		return updated
+	}
+	return content
+}
+
+func addMainLineBeforeMarkersIfFound(content, line string, markers []string) (string, bool) {
+	for _, marker := range markers {
+		idx := strings.Index(content, marker)
+		if idx != -1 {
+			return content[:idx] + line + "\n\n" + content[idx:], true
+		}
+	}
+	return content, false
+}
+
+func replaceMainLine(content, match, replacement string) (string, bool) {
+	start := 0
+	for start < len(content) {
+		lineStart := start
+		lineEnd := strings.IndexByte(content[start:], '\n')
+		if lineEnd == -1 {
+			lineEnd = len(content)
+		} else {
+			lineEnd += start
+		}
+
+		line := content[lineStart:lineEnd]
+		if strings.Contains(line, match) {
+			return content[:lineStart] + replacement + content[lineEnd:], true
+		}
+
+		if lineEnd == len(content) {
+			break
+		}
+		start = lineEnd + 1
+	}
+	return content, false
+}
+
+func addMainLineBeforeListen(content, line string) string {
 	markers := []string{
 		"\tlog.Fatal(app.Listen())",
 		"\tif err := app.Listen(); err != nil {",
 		"log.Fatal(app.Listen())",
 		"if err := app.Listen(); err != nil {",
 	}
-	for _, marker := range markers {
-		idx := strings.Index(content, marker)
-		if idx != -1 {
-			return content[:idx] + line + "\n\n" + content[idx:]
+	return addMainLineBeforeMarkers(content, line, markers)
+}
+
+func expandEnvExample(example, envFileContent string) string {
+	return envPlaceholderPattern.ReplaceAllStringFunc(example, func(match string) string {
+		submatches := envPlaceholderPattern.FindStringSubmatch(match)
+		if len(submatches) != 2 {
+			return ""
 		}
+
+		key := submatches[1]
+		if value, ok := lookupEnvValue(envFileContent, key); ok {
+			return value
+		}
+		if value, ok := os.LookupEnv(key); ok {
+			return value
+		}
+		return ""
+	})
+}
+
+func lookupEnvValue(envFileContent, key string) (string, bool) {
+	for _, line := range strings.Split(envFileContent, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if !strings.HasPrefix(trimmed, key+"=") {
+			continue
+		}
+		return strings.TrimSpace(strings.TrimPrefix(trimmed, key+"=")), true
 	}
-	return content
+	return "", false
 }
 
 // stepCreateProviderFile creates a dedicated Go file (e.g. cmd/setup_jwt.go) that

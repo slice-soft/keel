@@ -88,6 +88,58 @@ func TestValidateKeelProject(t *testing.T) {
 	}
 }
 
+func TestDatabaseBootstrapIsPlacedBeforeModules(t *testing.T) {
+	mainWithModules := `package main
+
+import (
+	"log"
+
+	"github.com/slice-soft/ss-keel-core/config"
+	"github.com/slice-soft/ss-keel-core/core"
+)
+
+func main() {
+	app := core.New(core.KConfig{
+		Port: config.GetEnvIntOrDefault("PORT", 7331),
+	})
+
+	// Register your modules here:
+	app.Use(starter.NewModule(appLogger))
+
+	log.Fatal(app.Listen())
+}
+`
+
+	tests := []struct {
+		name      string
+		bootstrap func(string) string
+		needle    string
+	}{
+		{
+			name:      "gorm",
+			bootstrap: ensureGormDatabaseBootstrap,
+			needle:    "db, err := database.New(database.Config{",
+		},
+		{
+			name:      "mongo",
+			bootstrap: ensureMongoDatabaseBootstrap,
+			needle:    "mongoClient, err := mongo.New(mongo.Config{",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updated := tt.bootstrap(mainWithModules)
+			if !strings.Contains(updated, tt.needle) {
+				t.Fatalf("expected bootstrap code %q, got:\n%s", tt.needle, updated)
+			}
+			if strings.Index(updated, tt.needle) > strings.Index(updated, "// Register your modules here:") {
+				t.Fatalf("expected bootstrap code before modules, got:\n%s", updated)
+			}
+		})
+	}
+}
+
 func TestGenerateModuleDefaultsAndAlias(t *testing.T) {
 	root := t.TempDir()
 	oldWD, _ := os.Getwd()

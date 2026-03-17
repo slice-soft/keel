@@ -103,8 +103,7 @@ func (r *{{.PascalName}}Repository) Patch(ctx context.Context, id string, entity
 	}
 
 	document := to{{.PascalName}}MongoDocument(entity)
-	var d any = document
-	return r.repo.Patch(ctx, normalizedID, &d)
+	return r.repo.Patch(ctx, normalizedID, &document)
 }
 
 func (r *{{.PascalName}}Repository) Delete(ctx context.Context, id string) error {
