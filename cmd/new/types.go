@@ -16,6 +16,7 @@ type projectSetup struct {
 	useEnv               bool
 	initGit              bool
 	installDeps          bool
+	skipInitialCommit    bool
 	withoutStarterModule bool
 	withFolderStructure  bool
 }

@@ -92,6 +92,7 @@ func collectProjectSetupWithDefaults(appName string) (projectSetup, error) {
 		useEnv:               true,
 		initGit:              true,
 		installDeps:          true,
+		skipInitialCommit:    true,
 		withoutStarterModule: withoutStarterModule,
 		withFolderStructure:  withFolderStructure,
 	}, nil
@@ -101,6 +102,7 @@ func printAutomaticModulePathWarning() {
 	fmt.Println("  ⚠  Project was created in automatic mode.")
 	fmt.Println("  ⚠  Review go.mod and ensure the module path is correct (domain and username, if applicable).")
 	fmt.Println("  ⚠  Apply this change consistently across the entire project.")
+	fmt.Println("  ⚠  The initial git commit will be skipped until you replace the placeholder module path.")
 }
 
 func projectNameFromModule(moduleName string) (string, error) {

@@ -6,5 +6,6 @@ import "github.com/slice-soft/ss-keel-gorm/database"
 // database.EntityBase provides ID, CreatedAt and UpdatedAt with GORM tags pre-configured.
 type {{.PascalName}}Entity struct {
 	database.EntityBase
+	// TODO: replace this placeholder with your real domain fields.
 	Name string `json:"name"`
 }

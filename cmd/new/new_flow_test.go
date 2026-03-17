@@ -230,6 +230,9 @@ func TestCollectProjectSetupWithDefaultsAirBranches(t *testing.T) {
 		if setup.moduleName != "github.com/my-github-user/api" {
 			t.Fatalf("unexpected module path: %q", setup.moduleName)
 		}
+		if !setup.skipInitialCommit {
+			t.Fatalf("expected automatic mode to defer the initial commit")
+		}
 		if installCalled {
 			t.Fatalf("did not expect install to run when air is already installed")
 		}
@@ -249,6 +252,9 @@ func TestCollectProjectSetupWithDefaultsAirBranches(t *testing.T) {
 		}
 		if setup.appName != "worker" {
 			t.Fatalf("unexpected appName: %q", setup.appName)
+		}
+		if !setup.skipInitialCommit {
+			t.Fatalf("expected automatic mode to defer the initial commit")
 		}
 		if !installCalled {
 			t.Fatalf("expected install to run when air is missing")
@@ -351,6 +357,36 @@ func TestRunPostSetupAndCreateInitialCommit(t *testing.T) {
 
 		if createInitialCommitCalls != 1 {
 			t.Fatalf("expected createInitialCommit to be called once, got %d", createInitialCommitCalls)
+		}
+	})
+
+	t.Run("runPostSetup skips initial commit when requested", func(t *testing.T) {
+		previousCommandRunner := commandRunner
+		previousCreateInitialCommit := createInitialCommitFn
+		t.Cleanup(func() {
+			commandRunner = previousCommandRunner
+			createInitialCommitFn = previousCreateInitialCommit
+		})
+
+		commandRunner = func(name string, args ...string) *exec.Cmd {
+			return exec.Command("go", "version")
+		}
+
+		createInitialCommitCalls := 0
+		createInitialCommitFn = func(projectDir string) error {
+			createInitialCommitCalls++
+			return nil
+		}
+
+		runPostSetup(projectSetup{
+			appName:           t.TempDir(),
+			initGit:           true,
+			installDeps:       true,
+			skipInitialCommit: true,
+		})
+
+		if createInitialCommitCalls != 0 {
+			t.Fatalf("expected createInitialCommit to be skipped, got %d calls", createInitialCommitCalls)
 		}
 	})
 

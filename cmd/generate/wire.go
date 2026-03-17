@@ -247,21 +247,44 @@ func addImport(content, importPath string) string {
 }
 
 func addMainLine(content, line string) string {
-	markers := []string{
-		"\tlog.Fatal(app.Listen())",
-		"\tif err := app.Listen(); err != nil {",
-		"log.Fatal(app.Listen())",
-		"if err := app.Listen(); err != nil {",
-	}
+	return addMainLineWithAnchor(content, line, "before_listen")
+}
 
+func addMainLineWithAnchor(content, line, anchor string) string {
+	switch anchor {
+	case "", "before_listen":
+		if updated, ok := addMainLineBeforeMarkersIfFound(content, line, []string{
+			"\tlog.Fatal(app.Listen())",
+			"\tif err := app.Listen(); err != nil {",
+			"log.Fatal(app.Listen())",
+			"if err := app.Listen(); err != nil {",
+		}); ok {
+			return updated
+		}
+	case "before_modules":
+		if updated, ok := addMainLineBeforeMarkersIfFound(content, line, []string{
+			"\t// Register your modules here:",
+			"// Register your modules here:",
+			"\tapp.Use(",
+			"app.Use(",
+		}); ok {
+			return updated
+		}
+		return addMainLine(content, line)
+	default:
+		return addMainLine(content, line)
+	}
+	return content
+}
+
+func addMainLineBeforeMarkersIfFound(content, line string, markers []string) (string, bool) {
 	for _, marker := range markers {
 		idx := strings.Index(content, marker)
 		if idx != -1 {
-			return content[:idx] + line + "\n\n" + content[idx:]
+			return content[:idx] + line + "\n\n" + content[idx:], true
 		}
 	}
-
-	return content
+	return content, false
 }
 
 func ensureAppLoggerBootstrap(content string) string {
@@ -277,7 +300,7 @@ func ensureAppLoggerBootstrap(content string) string {
 
 	loggerInit := "\tappLogger := logger.NewLogger(config.GetEnvOrDefault(\"APP_ENV\", \"development\") == \"production\")"
 	if !strings.Contains(content, "appLogger := logger.NewLogger(") {
-		content = addMainLine(content, loggerInit)
+		content = addMainLineWithAnchor(content, loggerInit, "before_modules")
 	}
 
 	return content
@@ -299,7 +322,7 @@ func ensureGormDatabaseBootstrap(content string) string {
 	}
 
 	setupLine := "\tdatabaseURL := config.GetEnvOrDefault(\"DATABASE_URL\", \"postgres://user:pass@localhost:5432/db?sslmode=disable\")\n\tdb, err := database.New(database.Config{\n\t\tEngine: database.EnginePostgres,\n\t\tDSN:    databaseURL,\n\t\tLogger: appLogger,\n\t})\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer db.Close()\n\tapp.RegisterHealthChecker(database.NewHealthChecker(db))"
-	return addMainLine(content, setupLine)
+	return addMainLineWithAnchor(content, setupLine, "before_modules")
 }
 
 func ensureMongoDatabaseBootstrap(content string) string {
@@ -318,7 +341,7 @@ func ensureMongoDatabaseBootstrap(content string) string {
 	}
 
 	setupLine := "\tmongoURI := config.GetEnvOrDefault(\"MONGO_URI\", \"mongodb://localhost:27017\")\n\tmongoDatabase := config.GetEnvOrDefault(\"MONGO_DATABASE\", \"app\")\n\n\tmongoClient, err := mongo.New(mongo.Config{\n\t\tURI:      mongoURI,\n\t\tDatabase: mongoDatabase,\n\t\tLogger:   appLogger,\n\t})\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer mongoClient.Close()\n\tapp.RegisterHealthChecker(mongo.NewHealthChecker(mongoClient))"
-	return addMainLine(content, setupLine)
+	return addMainLineWithAnchor(content, setupLine, "before_modules")
 }
 
 func moduleNeedsDatabase(moduleName string) (moduleDatabaseNeeds, error) {

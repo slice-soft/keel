@@ -39,6 +39,20 @@ func main() {
 }
 `
 
+const sampleMainWithModules = `package main
+
+import (
+	"log"
+)
+
+func main() {
+	// Register your modules here:
+	app.Use(starter.NewModule(appLogger))
+
+	log.Fatal(app.Listen())
+}
+`
+
 func TestInstall(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		root := t.TempDir()
@@ -279,6 +293,27 @@ func TestStepEnv(t *testing.T) {
 			t.Fatalf("expected initial API_KEY value, got %q", text)
 		}
 	})
+
+	t.Run("expands placeholders from existing env values", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+
+		if err := os.WriteFile(filepath.Join(root, ".env"), []byte("SERVICE_NAME=demo-app\n"), 0644); err != nil {
+			t.Fatalf("failed to seed .env: %v", err)
+		}
+
+		if err := stepEnv(Step{Key: "JWT_ISSUER", Example: "{{SERVICE_NAME}}"}); err != nil {
+			t.Fatalf("stepEnv returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, ".env"))
+		if err != nil {
+			t.Fatalf("failed to read .env: %v", err)
+		}
+		if !strings.Contains(string(content), "JWT_ISSUER=demo-app") {
+			t.Fatalf("expected expanded placeholder, got %q", string(content))
+		}
+	})
 }
 
 func TestStepMainImport(t *testing.T) {
@@ -357,6 +392,66 @@ func TestStepMainCode(t *testing.T) {
 		}
 		if strings.Index(text, "app.Use(gorm.Middleware())") > strings.Index(text, "log.Fatal(app.Listen())") {
 			t.Fatalf("expected inserted code before app.Listen call, got %q", text)
+		}
+	})
+
+	t.Run("supports before_modules anchor", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		writeMainFile(t, root, sampleMainWithModules)
+
+		step := Step{
+			Anchor: "before_modules",
+			Code:   "db := setupDatabase(app, appLogger)\ndefer db.Close()",
+			Guard:  "setupDatabase(",
+		}
+
+		if err := stepMainCode(step); err != nil {
+			t.Fatalf("stepMainCode returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, "cmd", "main.go"))
+		if err != nil {
+			t.Fatalf("failed to read main.go: %v", err)
+		}
+		text := string(content)
+		if strings.Index(text, "db := setupDatabase(app, appLogger)") > strings.Index(text, "// Register your modules here:") {
+			t.Fatalf("expected setup code before module section, got %q", text)
+		}
+	})
+
+	t.Run("replaces matching line before inserting", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		writeMainFile(t, root, sampleMainWithModules)
+
+		if err := updateMainGo(func(content string) string {
+			return strings.Replace(content, "// Register your modules here:\n", "_ = setupJWT(app, appLogger)\n\n\t// Register your modules here:\n", 1)
+		}); err != nil {
+			t.Fatalf("failed to seed jwt setup line: %v", err)
+		}
+
+		step := Step{
+			Anchor:  "before_modules",
+			Guard:   "jwtProvider := setupJWT(",
+			Replace: "setupJWT(app, appLogger)",
+			Code:    "jwtProvider := setupJWT(app, appLogger)",
+		}
+
+		if err := stepMainCode(step); err != nil {
+			t.Fatalf("stepMainCode returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, "cmd", "main.go"))
+		if err != nil {
+			t.Fatalf("failed to read main.go: %v", err)
+		}
+		text := string(content)
+		if strings.Contains(text, "_ = setupJWT(app, appLogger)") {
+			t.Fatalf("expected placeholder jwt setup to be replaced, got %q", text)
+		}
+		if strings.Count(text, "jwtProvider := setupJWT(app, appLogger)") != 1 {
+			t.Fatalf("expected rewritten jwt provider line once, got %q", text)
 		}
 	})
 }

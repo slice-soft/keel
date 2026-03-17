@@ -6,5 +6,6 @@ import "github.com/slice-soft/ss-keel-mongo/mongo"
 // mongo.EntityBase provides ID, CreatedAt and UpdatedAt with BSON tags pre-configured.
 type {{.PascalName}}Entity struct {
 	mongo.EntityBase
+	// TODO: replace this placeholder with your real domain fields.
 	Name string `json:"name"`
 }

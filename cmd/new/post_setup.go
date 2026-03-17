@@ -40,6 +40,10 @@ func runPostSetup(setup projectSetup) {
 	}
 
 	if gitInitialized {
+		if setup.skipInitialCommit {
+			fmt.Println("  ⚠  Initial commit skipped: update go.mod to replace the placeholder module path first.")
+			return
+		}
 		if err := createInitialCommitFn(setup.appName); err != nil {
 			fmt.Printf("  ⚠  initial commit failed: %v\n", err)
 		} else {
