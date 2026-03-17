@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/slice-soft/keel/compare/v1.7.0...v1.8.0) (2026-03-17)
+
+
+### Features
+
+* enhance project setup and normalization features, add support for note steps in addons ([#27](https://github.com/slice-soft/keel/issues/27)) ([31f6029](https://github.com/slice-soft/keel/commit/31f602921f4759f77acbdd1dec61ce2fab1d1770))
+
 ## [1.7.0](https://github.com/slice-soft/keel/compare/v1.6.1...v1.7.0) (2026-03-17)
 
 
