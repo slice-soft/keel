@@ -168,8 +168,10 @@ func (s *{{.PascalName}}Service) repo() ({{.PascalName}}RepositoryContract, erro
 
 func to{{.PascalName}}Response(entity {{.PascalName}}Entity) {{.PascalName}}ResponseDTO {
 	return {{.PascalName}}ResponseDTO{
-		ID:   entity.ID,
-		Name: entity.Name,
+		ID:        entity.ID,
+		Name:      entity.Name,
+		CreatedAt: entity.CreatedAt,
+		UpdatedAt: entity.UpdatedAt,
 	}
 }
 
