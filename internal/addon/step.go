@@ -26,7 +26,7 @@ type Manifest struct {
 
 // Step is a single installation action defined in keel-addon.json.
 type Step struct {
-	// Type is one of: go_get | env | main_import | main_code | create_provider_file
+	// Type is one of: go_get | env | main_import | main_code | create_provider_file | note
 	Type string `json:"type"`
 
 	// go_get
@@ -36,6 +36,7 @@ type Step struct {
 	Key         string `json:"key,omitempty"`
 	Example     string `json:"example,omitempty"`
 	Description string `json:"description,omitempty"`
+	Message     string `json:"message,omitempty"`
 
 	// main_import
 	Path string `json:"path,omitempty"`

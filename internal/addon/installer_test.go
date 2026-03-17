@@ -59,6 +59,9 @@ func TestInstall(t *testing.T) {
 		withWorkingDir(t, root)
 		resetExecCommand(t)
 		writeMainFile(t, root, sampleMain)
+		if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/demo\n\ngo 1.25.7\n"), 0644); err != nil {
+			t.Fatalf("failed to seed go.mod: %v", err)
+		}
 
 		tidyCalled := false
 		execCommand = func(name string, args ...string) *exec.Cmd {
@@ -89,6 +92,13 @@ func TestInstall(t *testing.T) {
 		if !strings.Contains(string(envContent), "DB_HOST=localhost") {
 			t.Fatalf("expected env var to be added, got %q", string(envContent))
 		}
+		envExampleContent, err := os.ReadFile(filepath.Join(root, ".env.example"))
+		if err != nil {
+			t.Fatalf("failed to read .env.example: %v", err)
+		}
+		if !strings.Contains(string(envExampleContent), "DB_HOST=localhost") {
+			t.Fatalf("expected env example var to be added, got %q", string(envExampleContent))
+		}
 
 		mainContent, err := os.ReadFile(filepath.Join(root, "cmd", "main.go"))
 		if err != nil {
@@ -100,6 +110,13 @@ func TestInstall(t *testing.T) {
 		}
 		if !strings.Contains(text, "app.Use(addon.Middleware())") {
 			t.Fatalf("expected code to be wired, got %q", text)
+		}
+		goModContent, err := os.ReadFile(filepath.Join(root, "go.mod"))
+		if err != nil {
+			t.Fatalf("failed to read go.mod: %v", err)
+		}
+		if !strings.Contains(string(goModContent), "go 1.25\n") {
+			t.Fatalf("expected normalized go directive, got %q", string(goModContent))
 		}
 		if !tidyCalled {
 			t.Fatalf("expected go mod tidy to be executed")
@@ -292,6 +309,18 @@ func TestStepEnv(t *testing.T) {
 		if !strings.Contains(text, "API_KEY=secret") {
 			t.Fatalf("expected initial API_KEY value, got %q", text)
 		}
+
+		exampleContent, err := os.ReadFile(filepath.Join(root, ".env.example"))
+		if err != nil {
+			t.Fatalf("failed to read .env.example: %v", err)
+		}
+		exampleText := string(exampleContent)
+		if strings.Count(exampleText, "API_KEY=") != 1 {
+			t.Fatalf("expected API_KEY once in example env, got %q", exampleText)
+		}
+		if !strings.Contains(exampleText, "API_KEY=secret") {
+			t.Fatalf("expected initial API_KEY value in .env.example, got %q", exampleText)
+		}
 	})
 
 	t.Run("expands placeholders from existing env values", func(t *testing.T) {
@@ -312,6 +341,29 @@ func TestStepEnv(t *testing.T) {
 		}
 		if !strings.Contains(string(content), "JWT_ISSUER=demo-app") {
 			t.Fatalf("expected expanded placeholder, got %q", string(content))
+		}
+
+		exampleContent, err := os.ReadFile(filepath.Join(root, ".env.example"))
+		if err != nil {
+			t.Fatalf("failed to read .env.example: %v", err)
+		}
+		if !strings.Contains(string(exampleContent), "JWT_ISSUER=demo-app") {
+			t.Fatalf("expected expanded placeholder in .env.example, got %q", string(exampleContent))
+		}
+	})
+}
+
+func TestStepNote(t *testing.T) {
+	t.Run("missing message", func(t *testing.T) {
+		err := stepNote(Step{})
+		if err == nil || !strings.Contains(err.Error(), "missing 'message'") {
+			t.Fatalf("expected missing message error, got %v", err)
+		}
+	})
+
+	t.Run("accepts description fallback", func(t *testing.T) {
+		if err := stepNote(Step{Description: "next step"}); err != nil {
+			t.Fatalf("stepNote returned error: %v", err)
 		}
 	})
 }

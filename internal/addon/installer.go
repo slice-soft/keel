@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/slice-soft/keel/internal/gomod"
 )
 
 var execCommand = exec.Command
@@ -15,7 +17,12 @@ var envPlaceholderPattern = regexp.MustCompile(`\{\{\s*([A-Z0-9_]+)\s*\}\}`)
 
 // Install executes all steps defined in the manifest inside the current Keel project.
 func Install(m *Manifest) error {
+	var notes []Step
 	for _, step := range m.Steps {
+		if step.Type == "note" {
+			notes = append(notes, step)
+			continue
+		}
 		if err := runStep(step, m.Name); err != nil {
 			return fmt.Errorf("step %q failed: %w", step.Type, err)
 		}
@@ -23,6 +30,14 @@ func Install(m *Manifest) error {
 
 	if err := runGoModTidy(); err != nil {
 		fmt.Printf("  ⚠  %v\n", err)
+	} else if err := gomod.NormalizeDirective("go.mod"); err != nil {
+		fmt.Printf("  ⚠  go.mod normalization failed: %v\n", err)
+	}
+
+	for _, step := range notes {
+		if err := stepNote(step); err != nil {
+			return fmt.Errorf("step %q failed: %w", step.Type, err)
+		}
 	}
 
 	return nil
@@ -40,6 +55,8 @@ func runStep(s Step, addonName string) error {
 		return stepMainCode(s)
 	case "create_provider_file":
 		return stepCreateProviderFile(s)
+	case "note":
+		return stepNote(s)
 	default:
 		return fmt.Errorf("unknown step type %q in %s", s.Type, addonName)
 	}
@@ -78,30 +95,45 @@ func runGoModTidy() error {
 	return nil
 }
 
-// stepEnv adds KEY=example to .env if the key is not already present.
+// stepEnv adds KEY=example to .env and .env.example if the key is not already present.
 func stepEnv(s Step) error {
 	if s.Key == "" {
 		return fmt.Errorf("env step is missing 'key'")
 	}
-	const envFile = ".env"
 
-	existing, _ := os.ReadFile(envFile)
-	if strings.Contains(string(existing), s.Key+"=") {
-		return nil // already set
+	envContent, _ := os.ReadFile(".env")
+	envExampleContent, _ := os.ReadFile(".env.example")
+	lookupContent := string(envContent)
+	if lookupContent == "" {
+		lookupContent = string(envExampleContent)
 	}
 
-	line := s.Key + "=" + expandEnvExample(s.Example, string(existing)) + "\n"
-	f, err := os.OpenFile(envFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	envValue := expandEnvExample(s.Example, lookupContent)
+	addedEnv, err := appendEnvKey(".env", s.Key, envValue)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
-	_, err = f.WriteString(line)
-	if err == nil {
+	if addedEnv {
 		fmt.Printf("  → added %s to .env\n", s.Key)
 	}
-	return err
+
+	exampleLookupContent := string(envExampleContent)
+	if exampleLookupContent == "" {
+		exampleLookupContent = string(envContent)
+	} else if len(envContent) > 0 {
+		exampleLookupContent += "\n" + string(envContent)
+	}
+
+	exampleValue := expandEnvExample(s.Example, exampleLookupContent)
+	addedExample, err := appendEnvKey(".env.example", s.Key, exampleValue)
+	if err != nil {
+		return err
+	}
+	if addedExample {
+		fmt.Printf("  → added %s to .env.example\n", s.Key)
+	}
+
+	return nil
 }
 
 // stepMainImport adds an import path to cmd/main.go.
@@ -283,6 +315,49 @@ func lookupEnvValue(envFileContent, key string) (string, bool) {
 		return strings.TrimSpace(strings.TrimPrefix(trimmed, key+"=")), true
 	}
 	return "", false
+}
+
+func appendEnvKey(filename, key, value string) (bool, error) {
+	existing, _ := os.ReadFile(filename)
+	if _, ok := lookupEnvValue(string(existing), key); ok {
+		return false, nil
+	}
+
+	line := key + "=" + value + "\n"
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(line); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func stepNote(s Step) error {
+	message := strings.TrimSpace(s.Message)
+	if message == "" {
+		message = strings.TrimSpace(s.Description)
+	}
+	if message == "" {
+		return fmt.Errorf("note step is missing 'message'")
+	}
+
+	lines := strings.Split(message, "\n")
+	for i, line := range lines {
+		line = strings.TrimRight(line, " ")
+		switch {
+		case i == 0:
+			fmt.Printf("  ℹ  %s\n", line)
+		case line == "":
+			fmt.Println()
+		default:
+			fmt.Printf("     %s\n", line)
+		}
+	}
+	return nil
 }
 
 // stepCreateProviderFile creates a dedicated Go file (e.g. cmd/setup_jwt.go) that

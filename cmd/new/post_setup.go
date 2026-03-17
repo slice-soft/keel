@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+
+	"github.com/slice-soft/keel/internal/gomod"
 )
 
 var commandRunner = exec.Command
@@ -34,6 +37,8 @@ func runPostSetup(setup projectSetup) {
 		tidyCmd.Stderr = os.Stderr
 		if err := tidyCmd.Run(); err != nil {
 			fmt.Printf("  ⚠  go mod tidy failed: %v\n", err)
+		} else if err := gomod.NormalizeDirective(filepath.Join(setup.appName, "go.mod")); err != nil {
+			fmt.Printf("  ⚠  go.mod normalization failed: %v\n", err)
 		} else {
 			fmt.Println("  ✓ Dependencies installed")
 		}
