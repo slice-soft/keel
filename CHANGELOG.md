@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/slice-soft/keel/compare/v1.6.0...v1.6.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* update DTOs and repository templates to include CreatedAt and UpdatedAt fields ([#23](https://github.com/slice-soft/keel/issues/23)) ([9af332e](https://github.com/slice-soft/keel/commit/9af332e68131147e7abd3b314596ef4ca72e4ecc))
+
 ## [1.6.0](https://github.com/slice-soft/keel/compare/v1.5.0...v1.6.0) (2026-03-16)
 
 
