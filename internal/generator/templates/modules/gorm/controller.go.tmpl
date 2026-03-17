@@ -55,7 +55,8 @@ func (c *{{.PascalName}}Controller) Routes() []httpx.Route {
 			WithResponse(httpx.WithResponse[{{.PascalName}}ResponseDTO](200)),
 		httpx.DELETE("/{{.PluralKebabName}}/:id", c.Delete).
 			Tag("{{.KebabName}}").
-			Describe("Delete {{.KebabName}}"),
+			Describe("Delete {{.KebabName}}").
+			WithResponse(httpx.WithResponse[struct{}](204)),
 	}
 }
 

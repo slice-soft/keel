@@ -483,6 +483,7 @@ func TestGeneratePersistenceModulesUsePluralRestRoutes(t *testing.T) {
 				`httpx.PUT("/users/:id", c.Update)`,
 				`httpx.PATCH("/users/:id", c.Patch)`,
 				`httpx.DELETE("/users/:id", c.Delete)`,
+				`WithResponse(httpx.WithResponse[struct{}](204))`,
 			} {
 				if !strings.Contains(controllerContent, want) {
 					t.Fatalf("expected controller to contain %q, got:\n%s", want, controllerContent)

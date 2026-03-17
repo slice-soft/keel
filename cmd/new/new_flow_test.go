@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	generator "github.com/slice-soft/keel/internal/generator/generate"
@@ -349,14 +350,26 @@ func TestRunPostSetupAndCreateInitialCommit(t *testing.T) {
 			return nil
 		}
 
+		appDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(appDir, "go.mod"), []byte("module example.com/demo\n\ngo 1.25.7\n"), 0644); err != nil {
+			t.Fatalf("failed to seed go.mod: %v", err)
+		}
+
 		runPostSetup(projectSetup{
-			appName:     t.TempDir(),
+			appName:     appDir,
 			initGit:     true,
 			installDeps: true,
 		})
 
 		if createInitialCommitCalls != 1 {
 			t.Fatalf("expected createInitialCommit to be called once, got %d", createInitialCommitCalls)
+		}
+		goModContent, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+		if err != nil {
+			t.Fatalf("failed to read go.mod: %v", err)
+		}
+		if !strings.Contains(string(goModContent), "go 1.25\n") {
+			t.Fatalf("expected normalized go directive, got %q", string(goModContent))
 		}
 	})
 

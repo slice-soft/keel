@@ -307,8 +307,8 @@ func ensureAppLoggerBootstrap(content string) string {
 }
 
 func ensureGormDatabaseBootstrap(content string) string {
-	// If the keel add gorm addon already set up setupDatabase(), reuse that variable.
-	if strings.Contains(content, "setupDatabase(") {
+	// If the keel add gorm addon already set up setupGorm()/setupDatabase(), reuse that variable.
+	if strings.Contains(content, "setupGorm(") || strings.Contains(content, "setupDatabase(") {
 		return content
 	}
 
