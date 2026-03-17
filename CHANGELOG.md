@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/slice-soft/keel/compare/v1.6.1...v1.7.0) (2026-03-17)
+
+
+### Features
+
+* add support for skipping initial commit and enhance main code insertion logic ([#25](https://github.com/slice-soft/keel/issues/25)) ([c8c09ab](https://github.com/slice-soft/keel/commit/c8c09ab2e6de8801dda7ea77ddd65ca90b558e5d))
+
 ## [1.6.1](https://github.com/slice-soft/keel/compare/v1.6.0...v1.6.1) (2026-03-17)
 
 
