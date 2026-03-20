@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +12,10 @@ func resetGenerateDeps(t *testing.T) {
 	t.Helper()
 
 	previousEnsurePersistenceAddonInstalled := ensurePersistenceAddonInstalledFn
+	previousRunGoModTidy := runGoModTidyFn
 	t.Cleanup(func() {
 		ensurePersistenceAddonInstalledFn = previousEnsurePersistenceAddonInstalled
+		runGoModTidyFn = previousRunGoModTidy
 	})
 }
 
@@ -198,6 +201,54 @@ func TestGenerateBaseModuleUsesPluralRouteForSingularName(t *testing.T) {
 	controllerContent := mustRead(t, filepath.Join(root, "internal", "modules", "user", "user_controller.go"))
 	if !strings.Contains(controllerContent, `httpx.GET("/users", c.Hello)`) {
 		t.Fatalf("expected singular module route to be pluralized, got:\n%s", controllerContent)
+	}
+}
+
+func TestGenerateModuleRunsGoModTidy(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	tidyCalled := 0
+	runGoModTidyFn = func() error {
+		tidyCalled++
+		return nil
+	}
+
+	if err := execute("module", "users", Options{}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+	if tidyCalled != 1 {
+		t.Fatalf("expected go mod tidy to run once, got %d", tidyCalled)
+	}
+}
+
+func TestGenerateModuleReturnsGoModTidyError(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	runGoModTidyFn = func() error {
+		return errors.New("go mod tidy failed: boom")
+	}
+
+	err := execute("module", "users", Options{})
+	if err == nil || !strings.Contains(err.Error(), "go mod tidy failed: boom") {
+		t.Fatalf("expected go mod tidy error to be returned, got %v", err)
 	}
 }
 
@@ -890,6 +941,12 @@ func TestGenerateStandaloneSchedulerCheckerHookRegistersMain(t *testing.T) {
 
 func seedProject(t *testing.T, root string) {
 	t.Helper()
+	previousRunGoModTidy := runGoModTidyFn
+	runGoModTidyFn = func() error { return nil }
+	t.Cleanup(func() {
+		runGoModTidyFn = previousRunGoModTidy
+	})
+
 	mustWrite(t, filepath.Join(root, "go.mod"), "module example.com/app\n")
 	mustMkdir(t, filepath.Join(root, "cmd"))
 	mustWrite(t, filepath.Join(root, "cmd", "main.go"), `package main

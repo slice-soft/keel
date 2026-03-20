@@ -85,14 +85,7 @@ func resolveGoGetTarget(pkg string) string {
 }
 
 func runGoModTidy() error {
-	fmt.Printf("  → go mod tidy\n")
-	cmd := execCommand("go", "mod", "tidy")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("go mod tidy failed: %w", err)
-	}
-	return nil
+	return gomod.RunTidy(execCommand, ".", os.Stdout, os.Stderr)
 }
 
 // stepEnv adds KEY=example to .env and .env.example if the key is not already present.

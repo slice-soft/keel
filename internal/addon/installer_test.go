@@ -506,6 +506,44 @@ func TestStepMainCode(t *testing.T) {
 			t.Fatalf("expected rewritten jwt provider line once, got %q", text)
 		}
 	})
+
+	t.Run("replaces placeholder provider usage when wiring oauth", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		writeMainFile(t, root, sampleMainWithModules)
+
+		if err := updateMainGo(func(content string) string {
+			return strings.Replace(content, "// Register your modules here:\n", "jwtProvider := setupJWT(app, appLogger)\n\t// TODO: use jwtProvider.Middleware() to protect routes\n\t// Example: protected := app.Group(\"/api\", jwtProvider.Middleware())\n\t_ = jwtProvider\n\n\t// Register your modules here:\n", 1)
+		}); err != nil {
+			t.Fatalf("failed to seed jwt provider wiring: %v", err)
+		}
+
+		step := Step{
+			Anchor:  "before_modules",
+			Guard:   "setupOAuth(",
+			Replace: "_ = jwtProvider",
+			Code:    "setupOAuth(app, jwtProvider, appLogger)",
+		}
+
+		if err := stepMainCode(step); err != nil {
+			t.Fatalf("stepMainCode returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, "cmd", "main.go"))
+		if err != nil {
+			t.Fatalf("failed to read main.go: %v", err)
+		}
+		text := string(content)
+		if strings.Contains(text, "_ = jwtProvider") {
+			t.Fatalf("expected placeholder jwt provider discard to be replaced, got %q", text)
+		}
+		if strings.Count(text, "setupOAuth(app, jwtProvider, appLogger)") != 1 {
+			t.Fatalf("expected oauth wiring once, got %q", text)
+		}
+		if strings.Count(text, "jwtProvider := setupJWT(app, appLogger)") != 1 {
+			t.Fatalf("expected jwt provider wiring to remain once, got %q", text)
+		}
+	})
 }
 
 func TestUpdateMainGo(t *testing.T) {
