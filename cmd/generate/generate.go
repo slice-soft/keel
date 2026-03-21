@@ -126,7 +126,10 @@ func execute(genType, rawName string, opts Options) error {
 		if err := generateModule(parsed.componentName, opts, repositoryChoice); err != nil {
 			return err
 		}
-		return ensureModuleRegisteredInMain(parsed.componentName)
+		if err := ensureModuleRegisteredInMain(parsed.componentName); err != nil {
+			return err
+		}
+		return runGoModTidyFn()
 	}
 
 	if opts.TransactionalModule {

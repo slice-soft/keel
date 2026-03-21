@@ -85,14 +85,7 @@ func resolveGoGetTarget(pkg string) string {
 }
 
 func runGoModTidy() error {
-	fmt.Printf("  → go mod tidy\n")
-	cmd := execCommand("go", "mod", "tidy")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("go mod tidy failed: %w", err)
-	}
-	return nil
+	return gomod.RunTidy(execCommand, ".", os.Stdout, os.Stderr)
 }
 
 // stepEnv adds KEY=example to .env and .env.example if the key is not already present.
@@ -360,7 +353,7 @@ func stepNote(s Step) error {
 	return nil
 }
 
-// stepCreateProviderFile creates a dedicated Go file (e.g. cmd/setup_jwt.go) that
+// stepCreateProviderFile creates a dedicated Go file (e.g. cmd/setup_provider.go) that
 // holds an addon initializer function, keeping cmd/main.go slim.
 // If the file already exists and contains the guard string, the step is skipped.
 func stepCreateProviderFile(s Step) error {

@@ -31,11 +31,7 @@ func runPostSetup(setup projectSetup) {
 
 	if setup.installDeps {
 		fmt.Println()
-		tidyCmd := commandRunner("go", "mod", "tidy")
-		tidyCmd.Dir = setup.appName
-		tidyCmd.Stdout = os.Stdout
-		tidyCmd.Stderr = os.Stderr
-		if err := tidyCmd.Run(); err != nil {
+		if err := gomod.RunTidy(commandRunner, setup.appName, os.Stdout, os.Stderr); err != nil {
 			fmt.Printf("  ⚠  go mod tidy failed: %v\n", err)
 		} else if err := gomod.NormalizeDirective(filepath.Join(setup.appName, "go.mod")); err != nil {
 			fmt.Printf("  ⚠  go.mod normalization failed: %v\n", err)

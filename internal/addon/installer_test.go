@@ -478,16 +478,16 @@ func TestStepMainCode(t *testing.T) {
 		writeMainFile(t, root, sampleMainWithModules)
 
 		if err := updateMainGo(func(content string) string {
-			return strings.Replace(content, "// Register your modules here:\n", "_ = setupJWT(app, appLogger)\n\n\t// Register your modules here:\n", 1)
+			return strings.Replace(content, "// Register your modules here:\n", "_ = setupProvider(app)\n\n\t// Register your modules here:\n", 1)
 		}); err != nil {
-			t.Fatalf("failed to seed jwt setup line: %v", err)
+			t.Fatalf("failed to seed provider setup line: %v", err)
 		}
 
 		step := Step{
 			Anchor:  "before_modules",
-			Guard:   "jwtProvider := setupJWT(",
-			Replace: "setupJWT(app, appLogger)",
-			Code:    "jwtProvider := setupJWT(app, appLogger)",
+			Guard:   "provider := setupProvider(",
+			Replace: "setupProvider(app)",
+			Code:    "provider := setupProvider(app)",
 		}
 
 		if err := stepMainCode(step); err != nil {
@@ -499,11 +499,49 @@ func TestStepMainCode(t *testing.T) {
 			t.Fatalf("failed to read main.go: %v", err)
 		}
 		text := string(content)
-		if strings.Contains(text, "_ = setupJWT(app, appLogger)") {
-			t.Fatalf("expected placeholder jwt setup to be replaced, got %q", text)
+		if strings.Contains(text, "_ = setupProvider(app)") {
+			t.Fatalf("expected placeholder provider setup to be replaced, got %q", text)
 		}
-		if strings.Count(text, "jwtProvider := setupJWT(app, appLogger)") != 1 {
-			t.Fatalf("expected rewritten jwt provider line once, got %q", text)
+		if strings.Count(text, "provider := setupProvider(app)") != 1 {
+			t.Fatalf("expected rewritten provider line once, got %q", text)
+		}
+	})
+
+	t.Run("replaces placeholder discard when wiring dependent code", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		writeMainFile(t, root, sampleMainWithModules)
+
+		if err := updateMainGo(func(content string) string {
+			return strings.Replace(content, "// Register your modules here:\n", "provider := setupProvider(app)\n\t_ = provider\n\n\t// Register your modules here:\n", 1)
+		}); err != nil {
+			t.Fatalf("failed to seed provider wiring: %v", err)
+		}
+
+		step := Step{
+			Anchor:  "before_modules",
+			Guard:   "wireFeature(",
+			Replace: "_ = provider",
+			Code:    "wireFeature(app, provider)",
+		}
+
+		if err := stepMainCode(step); err != nil {
+			t.Fatalf("stepMainCode returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, "cmd", "main.go"))
+		if err != nil {
+			t.Fatalf("failed to read main.go: %v", err)
+		}
+		text := string(content)
+		if strings.Contains(text, "_ = provider") {
+			t.Fatalf("expected placeholder provider discard to be replaced, got %q", text)
+		}
+		if strings.Count(text, "wireFeature(app, provider)") != 1 {
+			t.Fatalf("expected dependent wiring once, got %q", text)
+		}
+		if strings.Count(text, "provider := setupProvider(app)") != 1 {
+			t.Fatalf("expected provider wiring to remain once, got %q", text)
 		}
 	})
 }

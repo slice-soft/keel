@@ -14,14 +14,12 @@ const addonManifestFile = "keel-addon.json"
 
 // Manifest is the keel-addon.json structure from an addon repo.
 type Manifest struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
-	Repo        string `json:"repo"`
-	// DependsOn lists addon aliases that must be installed before this one
-	// (e.g. ["jwt"] for oauth). The CLI will detect and offer to install them.
-	DependsOn []string `json:"depends_on,omitempty"`
-	Steps     []Step   `json:"steps"`
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Repo        string   `json:"repo"`
+	DependsOn   []string `json:"depends_on,omitempty"`
+	Steps       []Step   `json:"steps"`
 }
 
 // Step is a single installation action defined in keel-addon.json.
@@ -49,9 +47,9 @@ type Step struct {
 	Replace string `json:"replace,omitempty"`
 	Code    string `json:"code,omitempty"`
 
-	// create_provider_file — creates cmd/setup_<addon>.go with an initializer
+	// create_provider_file creates a dedicated setup file with an initializer
 	// function, keeping cmd/main.go clean. Guard checks the file before creating.
-	Filename string `json:"filename,omitempty"` // e.g. "cmd/setup_jwt.go"
+	Filename string `json:"filename,omitempty"` // e.g. "cmd/setup_provider.go"
 	Content  string `json:"content,omitempty"`  // full Go source for the file
 }
 
