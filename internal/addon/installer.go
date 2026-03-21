@@ -353,7 +353,7 @@ func stepNote(s Step) error {
 	return nil
 }
 
-// stepCreateProviderFile creates a dedicated Go file (e.g. cmd/setup_jwt.go) that
+// stepCreateProviderFile creates a dedicated Go file (e.g. cmd/setup_provider.go) that
 // holds an addon initializer function, keeping cmd/main.go slim.
 // If the file already exists and contains the guard string, the step is skipped.
 func stepCreateProviderFile(s Step) error {
