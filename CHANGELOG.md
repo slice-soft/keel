@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/slice-soft/keel/compare/v1.8.0...v1.9.0) (2026-03-21)
+
+
+### Features
+
+* refactor go mod tidy handling and add tests for module generation ([#29](https://github.com/slice-soft/keel/issues/29)) ([8ba68ae](https://github.com/slice-soft/keel/commit/8ba68ae909455e82a6ee1c93fd9561af944a0778))
+
 ## [1.8.0](https://github.com/slice-soft/keel/compare/v1.7.0...v1.8.0) (2026-03-17)
 
 
