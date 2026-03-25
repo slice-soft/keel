@@ -106,11 +106,12 @@ func TestBuildProjectFiles(t *testing.T) {
 	filesWithoutStarter := buildProjectFiles(appName, true, true, false)
 
 	required := map[string]bool{
-		filepath.Join(appName, "cmd", "main.go"): false,
-		filepath.Join(appName, "go.mod"):         false,
-		filepath.Join(appName, "keel.toml"):      false,
-		filepath.Join(appName, "README.md"):      false,
-		filepath.Join(appName, ".gitignore"):     false,
+		filepath.Join(appName, "cmd", "main.go"):         false,
+		filepath.Join(appName, "go.mod"):                 false,
+		filepath.Join(appName, "keel.toml"):              false,
+		filepath.Join(appName, "application.properties"): false,
+		filepath.Join(appName, "README.md"):              false,
+		filepath.Join(appName, ".gitignore"):             false,
 	}
 	for _, f := range filesWithStarter {
 		if _, ok := required[f.Destination]; ok {

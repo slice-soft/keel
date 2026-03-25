@@ -12,6 +12,8 @@ go mod tidy
 keel run dev
 ```
 
+Runtime config is loaded automatically from `application.properties`, with `.env` values overriding placeholders when present.
+
 ## Project Structure
 
 {{- if .UseStarterModule }}
@@ -48,6 +50,7 @@ keel g module users
 {{- end }}
 ├── go.mod
 ├── keel.toml
+├── application.properties
 {{- if .UseEnv }}
 ├── .env
 {{- end }}

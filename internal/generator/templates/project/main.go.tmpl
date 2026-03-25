@@ -1,9 +1,6 @@
 package main
 
 import (
-	{{- if .UseEnv }}
-	"github.com/joho/godotenv"
-	{{- end }}
 	{{- if .UseStarterModule }}
 	"{{.ModuleName}}/internal/modules/starter"
 	{{- end }}
@@ -13,22 +10,9 @@ import (
 )
 
 func main() {
-	appLogger := logger.NewLogger(config.GetEnvOrDefault("APP_ENV", "development") == "production")
-	{{- if .UseEnv }}
-	err := godotenv.Load()
-	if err != nil {
-		appLogger.Warn("Could not load .env file: %v", err)
-	}
-	{{- end }}
-	app := core.New(core.KConfig{
-		Port:        config.GetEnvIntOrDefault("PORT", 7331),
-		ServiceName: config.GetEnvOrDefault("SERVICE_NAME", "{{.AppName}}"),
-		Env:         config.GetEnvOrDefault("APP_ENV", "development"),
-		Docs: core.DocsConfig{
-			Title:   "{{.AppName}} API",
-			Version: "1.0.0",
-		},
-	})
+	appConfig := config.MustLoadConfig[core.KConfig]()
+	appLogger := logger.NewLogger(appConfig.Env == "production")
+	app := core.New(appConfig)
 
 	// Register your modules here:
 	{{- if .UseStarterModule }}

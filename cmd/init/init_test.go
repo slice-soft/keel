@@ -48,7 +48,7 @@ func TestFileExists(t *testing.T) {
 }
 
 func TestGenerateKeelConfig(t *testing.T) {
-	t.Run("with air and no existing air config creates both files", func(t *testing.T) {
+	t.Run("with air and no existing air config creates keel.toml, application.properties and .air.toml", func(t *testing.T) {
 		dir := t.TempDir()
 		oldWD, err := os.Getwd()
 		if err != nil {
@@ -70,13 +70,16 @@ func TestGenerateKeelConfig(t *testing.T) {
 		}
 		text := string(content)
 
-		if !strings.Contains(text, "name    = \"\"") || !strings.Contains(text, "version = \"\"") {
-			t.Fatalf("expected [app] section empty in init mode, got: %s", text)
+		if !strings.Contains(text, "[project]") || !strings.Contains(text, "config  = \"application.properties\"") {
+			t.Fatalf("expected [project] section in init mode, got: %s", text)
 		}
 		if !strings.Contains(text, "dev   = \"air\"") {
 			t.Fatalf("expected air dev script in generated file, got: %s", text)
 		}
 
+		if _, err := os.Stat(filepath.Join(dir, "application.properties")); err != nil {
+			t.Fatalf("expected application.properties to be generated: %v", err)
+		}
 		if _, err := os.Stat(filepath.Join(dir, ".air.toml")); err != nil {
 			t.Fatalf("expected .air.toml to be generated: %v", err)
 		}
@@ -112,7 +115,7 @@ func TestGenerateKeelConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("without air creates only keel config", func(t *testing.T) {
+	t.Run("without air creates keel.toml and application.properties only", func(t *testing.T) {
 		dir := t.TempDir()
 		oldWD, err := os.Getwd()
 		if err != nil {
@@ -131,28 +134,38 @@ func TestGenerateKeelConfig(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(dir, ".air.toml")); !os.IsNotExist(err) {
 			t.Fatalf("did not expect .air.toml to be generated")
 		}
+		if _, err := os.Stat(filepath.Join(dir, "application.properties")); err != nil {
+			t.Fatalf("expected application.properties to be generated: %v", err)
+		}
 	})
 }
 
 func TestBuildInitFiles(t *testing.T) {
 	t.Run("with air and no existing config", func(t *testing.T) {
-		files := buildInitFiles("keel.toml", true, false)
-		if len(files) != 2 {
-			t.Fatalf("expected 2 files with air and no config, got %d", len(files))
+		files := buildInitFiles("keel.toml", true, false, false)
+		if len(files) != 3 {
+			t.Fatalf("expected 3 files with air and no config, got %d", len(files))
 		}
 	})
 
 	t.Run("with air and existing config", func(t *testing.T) {
-		files := buildInitFiles("keel.toml", true, true)
+		files := buildInitFiles("keel.toml", true, true, true)
 		if len(files) != 1 {
-			t.Fatalf("expected 1 file when .air.toml already exists, got %d", len(files))
+			t.Fatalf("expected 1 file when .air.toml and application.properties already exist, got %d", len(files))
 		}
 	})
 
 	t.Run("without air", func(t *testing.T) {
-		files := buildInitFiles("keel.toml", false, false)
+		files := buildInitFiles("keel.toml", false, false, false)
+		if len(files) != 2 {
+			t.Fatalf("expected 2 files without air, got %d", len(files))
+		}
+	})
+
+	t.Run("without air and existing application properties", func(t *testing.T) {
+		files := buildInitFiles("keel.toml", false, false, true)
 		if len(files) != 1 {
-			t.Fatalf("expected 1 file without air, got %d", len(files))
+			t.Fatalf("expected 1 file when application.properties already exists, got %d", len(files))
 		}
 	})
 }

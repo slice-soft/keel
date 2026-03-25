@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -26,13 +27,14 @@ type Manifest struct {
 
 // Step is a single installation action defined in keel-addon.json.
 type Step struct {
-	// Type is one of: go_get | env | main_import | main_code | create_provider_file | note
+	// Type is one of: go_get | env | property | main_import | main_code |
+	// create_provider_file | note
 	Type string `json:"type"`
 
 	// go_get
 	Package string `json:"package,omitempty"`
 
-	// env
+	// env | property
 	Key         string `json:"key,omitempty"`
 	Example     string `json:"example,omitempty"`
 	Description string `json:"description,omitempty"`
@@ -58,8 +60,12 @@ type Step struct {
 }
 
 // FetchManifest downloads keel-addon.json from a Go module path.
-// Supports github.com paths only for now.
+// Supports github.com module paths and local addon directories.
 func FetchManifest(repo string) (*Manifest, error) {
+	if manifest, ok, err := loadManifestFromLocalPath(repo); ok {
+		return manifest, err
+	}
+
 	rawURL, err := rawManifestURL(repo)
 	if err != nil {
 		return nil, err
@@ -89,6 +95,43 @@ func FetchManifest(repo string) (*Manifest, error) {
 		return nil, fmt.Errorf("invalid keel-addon.json in %s: %w", repo, err)
 	}
 	return &m, nil
+}
+
+func loadManifestFromLocalPath(repo string) (*Manifest, bool, error) {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return nil, false, nil
+	}
+
+	if !filepath.IsAbs(repo) && !strings.HasPrefix(repo, ".") {
+		return nil, false, nil
+	}
+
+	info, err := os.Stat(repo)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, true, fmt.Errorf("could not access local addon path %s: %w", repo, err)
+	}
+	if !info.IsDir() {
+		return nil, true, fmt.Errorf("local addon path %s is not a directory", repo)
+	}
+
+	path := filepath.Join(repo, addonManifestFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, true, fmt.Errorf("%s does not have a %s", repo, addonManifestFile)
+		}
+		return nil, true, fmt.Errorf("could not read %s: %w", path, err)
+	}
+
+	var m Manifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, true, fmt.Errorf("invalid keel-addon.json in %s: %w", repo, err)
+	}
+	return &m, true, nil
 }
 
 // rawManifestURL builds the raw content URL for keel-addon.json given a Go module path.

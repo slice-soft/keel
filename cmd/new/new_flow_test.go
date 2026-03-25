@@ -292,6 +292,7 @@ func TestScaffoldProjectAndHelpers(t *testing.T) {
 		requiredPaths := []string{
 			filepath.Join(root, "demo", "cmd", "main.go"),
 			filepath.Join(root, "demo", "go.mod"),
+			filepath.Join(root, "demo", "application.properties"),
 			filepath.Join(root, "demo", "README.md"),
 			filepath.Join(root, "demo", "internal", "modules", "starter", "module.go"),
 			filepath.Join(root, "demo", "internal", "middleware"),

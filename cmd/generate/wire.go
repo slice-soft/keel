@@ -298,7 +298,7 @@ func ensureAppLoggerBootstrap(content string) string {
 		content = addImport(content, loggerImport)
 	}
 
-	loggerInit := "\tappLogger := logger.NewLogger(config.GetEnvOrDefault(\"APP_ENV\", \"development\") == \"production\")"
+	loggerInit := "\tappLogger := logger.NewLogger(config.IsProd())"
 	if !strings.Contains(content, "appLogger := logger.NewLogger(") {
 		content = addMainLineWithAnchor(content, loggerInit, "before_modules")
 	}
@@ -321,7 +321,7 @@ func ensureGormDatabaseBootstrap(content string) string {
 		return content
 	}
 
-	setupLine := "\tdatabaseURL := config.GetEnvOrDefault(\"DATABASE_URL\", \"postgres://user:pass@localhost:5432/db?sslmode=disable\")\n\tdb, err := database.New(database.Config{\n\t\tEngine: database.EnginePostgres,\n\t\tDSN:    databaseURL,\n\t\tLogger: appLogger,\n\t})\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer db.Close()\n\tapp.RegisterHealthChecker(database.NewHealthChecker(db))"
+	setupLine := "\tdbConfig := config.MustLoadConfig[database.Config]()\n\tdbConfig.Logger = appLogger\n\tdb, err := database.New(dbConfig)\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer db.Close()\n\tapp.RegisterHealthChecker(database.NewHealthChecker(db))"
 	return addMainLineWithAnchor(content, setupLine, "before_modules")
 }
 
@@ -340,7 +340,7 @@ func ensureMongoDatabaseBootstrap(content string) string {
 		return content
 	}
 
-	setupLine := "\tmongoURI := config.GetEnvOrDefault(\"MONGO_URI\", \"mongodb://localhost:27017\")\n\tmongoDatabase := config.GetEnvOrDefault(\"MONGO_DATABASE\", \"app\")\n\n\tmongoClient, err := mongo.New(mongo.Config{\n\t\tURI:      mongoURI,\n\t\tDatabase: mongoDatabase,\n\t\tLogger:   appLogger,\n\t})\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer mongoClient.Close()\n\tapp.RegisterHealthChecker(mongo.NewHealthChecker(mongoClient))"
+	setupLine := "\tmongoConfig := config.MustLoadConfig[mongo.Config]()\n\tmongoConfig.Logger = appLogger\n\tmongoClient, err := mongo.New(mongoConfig)\n\tif err != nil {\n\t\tappLogger.Error(\"failed to start app: %v\", err)\n\t}\n\tdefer mongoClient.Close()\n\tapp.RegisterHealthChecker(mongo.NewHealthChecker(mongoClient))"
 	return addMainLineWithAnchor(content, setupLine, "before_modules")
 }
 

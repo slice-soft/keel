@@ -28,7 +28,8 @@ func NewCommand() *cobra.Command {
 		Long: `Install a Keel addon and wire it automatically into cmd/main.go.
 
   keel add gorm                              # official alias
-  keel add github.com/username/my-addon      # any repo with keel-addon.json`,
+  keel add github.com/username/my-addon      # any repo with keel-addon.json
+  keel add ../path/to/my-addon               # local addon repo for unpublished changes`,
 		Args: cobra.ExactArgs(1),
 		RunE: runAdd,
 	}

@@ -40,7 +40,7 @@ func TestLoadScriptsFromConfig(t *testing.T) {
 	t.Run("loads scripts", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "keel.toml")
-		content := "[scripts]\ndev=\"go run ./cmd/main.go\"\ntest=\"go test ./...\"\n"
+		content := "[scripts]\ndev=\"go run ./cmd\"\ntest=\"go test ./...\"\n"
 		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 			t.Fatalf("failed to write config: %v", err)
 		}
@@ -49,7 +49,7 @@ func TestLoadScriptsFromConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected nil error, got %v", err)
 		}
-		if scripts["dev"] != "go run ./cmd/main.go" {
+		if scripts["dev"] != "go run ./cmd" {
 			t.Fatalf("unexpected script value: %q", scripts["dev"])
 		}
 	})
@@ -76,13 +76,13 @@ func TestLoadScriptsFromConfig(t *testing.T) {
 }
 
 func TestFindScriptCommand(t *testing.T) {
-	scripts := map[string]string{"dev": "go run ./cmd/main.go"}
+	scripts := map[string]string{"dev": "go run ./cmd"}
 
 	cmd, err := findScriptCommand(scripts, "dev")
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if cmd != "go run ./cmd/main.go" {
+	if cmd != "go run ./cmd" {
 		t.Fatalf("unexpected script command: %q", cmd)
 	}
 
