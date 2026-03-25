@@ -103,7 +103,7 @@ import (
 
 func main() {
 	app := core.New(core.KConfig{
-		Port: config.GetEnvIntOrDefault("PORT", 7331),
+		Port: config.GetInt("PORT"),
 	})
 
 	// Register your modules here:
@@ -121,12 +121,12 @@ func main() {
 		{
 			name:      "gorm",
 			bootstrap: ensureGormDatabaseBootstrap,
-			needle:    "db, err := database.New(database.Config{",
+			needle:    "dbConfig := config.MustLoadConfig[database.Config]()",
 		},
 		{
 			name:      "mongo",
 			bootstrap: ensureMongoDatabaseBootstrap,
-			needle:    "mongoClient, err := mongo.New(mongo.Config{",
+			needle:    "mongoConfig := config.MustLoadConfig[mongo.Config]()",
 		},
 	}
 
@@ -396,7 +396,7 @@ func TestGenerateModuleWithGormFlagWiresDatabaseInMain(t *testing.T) {
 	if !strings.Contains(mainContent, "\"github.com/slice-soft/ss-keel-gorm/database\"") {
 		t.Fatalf("expected database import in main.go, got:\n%s", mainContent)
 	}
-	if !strings.Contains(mainContent, "db, err := database.New(database.Config{") {
+	if !strings.Contains(mainContent, "dbConfig := config.MustLoadConfig[database.Config]()") {
 		t.Fatalf("expected database bootstrap in main.go, got:\n%s", mainContent)
 	}
 	if !strings.Contains(mainContent, "app.Use(payments.NewModule(appLogger, db))") {
@@ -467,7 +467,7 @@ func TestGenerateModuleWithMongoFlagWiresDatabaseInMain(t *testing.T) {
 	if !strings.Contains(mainContent, "\"github.com/slice-soft/ss-keel-mongo/mongo\"") {
 		t.Fatalf("expected mongo import in main.go, got:\n%s", mainContent)
 	}
-	if !strings.Contains(mainContent, "mongoClient, err := mongo.New(mongo.Config{") {
+	if !strings.Contains(mainContent, "mongoConfig := config.MustLoadConfig[mongo.Config]()") {
 		t.Fatalf("expected mongo bootstrap in main.go, got:\n%s", mainContent)
 	}
 	if !strings.Contains(mainContent, "app.Use(payments.NewModule(appLogger, mongoClient))") {
@@ -960,9 +960,9 @@ import (
 
 func main() {
 	app := core.New(core.KConfig{
-		Port:        config.GetEnvIntOrDefault("PORT", 7331),
-		ServiceName: config.GetEnvOrDefault("SERVICE_NAME", "app"),
-		Env:         config.GetEnvOrDefault("APP_ENV", "development"),
+		Port:        config.GetInt("PORT"),
+		ServiceName: config.GetString("SERVICE_NAME"),
+		Env:         config.GetString("APP_ENV"),
 	})
 
 	log.Fatal(app.Listen())

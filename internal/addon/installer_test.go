@@ -75,6 +75,7 @@ func TestInstall(t *testing.T) {
 		manifest := &Manifest{
 			Name: "gorm",
 			Steps: []Step{
+				{Type: "property", Key: "database.url", Example: "${DATABASE_URL:./app.db}"},
 				{Type: "env", Key: "DB_HOST", Example: "localhost"},
 				{Type: "main_import", Path: "github.com/acme/addon"},
 				{Type: "main_code", Guard: "app.Use(addon.Middleware())", Code: "app.Use(addon.Middleware())"},
@@ -98,6 +99,13 @@ func TestInstall(t *testing.T) {
 		}
 		if !strings.Contains(string(envExampleContent), "DB_HOST=localhost") {
 			t.Fatalf("expected env example var to be added, got %q", string(envExampleContent))
+		}
+		propertiesContent, err := os.ReadFile(filepath.Join(root, "application.properties"))
+		if err != nil {
+			t.Fatalf("failed to read application.properties: %v", err)
+		}
+		if !strings.Contains(string(propertiesContent), "database.url=${DATABASE_URL:./app.db}") {
+			t.Fatalf("expected property to be added, got %q", string(propertiesContent))
 		}
 
 		mainContent, err := os.ReadFile(filepath.Join(root, "cmd", "main.go"))
@@ -176,6 +184,15 @@ func TestRunStep(t *testing.T) {
 
 		if err := runStep(Step{Type: "env", Key: "TOKEN", Example: "abc"}, "addon"); err != nil {
 			t.Fatalf("runStep(env) returned error: %v", err)
+		}
+	})
+
+	t.Run("property dispatch", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+
+		if err := runStep(Step{Type: "property", Key: "redis.url", Example: "${REDIS_URL:redis://localhost:6379}"}, "addon"); err != nil {
+			t.Fatalf("runStep(property) returned error: %v", err)
 		}
 	})
 
@@ -349,6 +366,39 @@ func TestStepEnv(t *testing.T) {
 		}
 		if !strings.Contains(string(exampleContent), "JWT_ISSUER=demo-app") {
 			t.Fatalf("expected expanded placeholder in .env.example, got %q", string(exampleContent))
+		}
+	})
+}
+
+func TestStepProperty(t *testing.T) {
+	t.Run("missing key", func(t *testing.T) {
+		err := stepProperty(Step{})
+		if err == nil || !strings.Contains(err.Error(), "missing 'key'") {
+			t.Fatalf("expected missing key error, got %v", err)
+		}
+	})
+
+	t.Run("adds value and is idempotent", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+
+		if err := stepProperty(Step{Key: "database.url", Example: "${DATABASE_URL:./app.db}"}); err != nil {
+			t.Fatalf("first stepProperty returned error: %v", err)
+		}
+		if err := stepProperty(Step{Key: "database.url", Example: "${DATABASE_URL:./other.db}"}); err != nil {
+			t.Fatalf("second stepProperty returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, "application.properties"))
+		if err != nil {
+			t.Fatalf("failed to read application.properties: %v", err)
+		}
+		text := string(content)
+		if strings.Count(text, "database.url=") != 1 {
+			t.Fatalf("expected database.url once, got %q", text)
+		}
+		if !strings.Contains(text, "database.url=${DATABASE_URL:./app.db}") {
+			t.Fatalf("expected initial database.url value, got %q", text)
 		}
 	})
 }

@@ -47,6 +47,32 @@ func TestFetchManifest(t *testing.T) {
 		}
 	})
 
+	t.Run("local path success", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, addonManifestFile)
+		body := `{"name":"local-addon","version":"1.0.0","repo":"github.com/acme/local-addon","steps":[{"type":"env","key":"TOKEN","example":"abc"}]}`
+		if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+			t.Fatalf("failed to write manifest: %v", err)
+		}
+
+		manifest, err := FetchManifest(dir)
+		if err != nil {
+			t.Fatalf("expected nil error, got %v", err)
+		}
+		if manifest.Name != "local-addon" || manifest.Repo != "github.com/acme/local-addon" {
+			t.Fatalf("unexpected manifest: %#v", manifest)
+		}
+	})
+
+	t.Run("local path missing manifest", func(t *testing.T) {
+		dir := t.TempDir()
+
+		_, err := FetchManifest(dir)
+		if err == nil || !strings.Contains(err.Error(), "does not have a keel-addon.json") {
+			t.Fatalf("expected missing local manifest error, got %v", err)
+		}
+	})
+
 	t.Run("request error", func(t *testing.T) {
 		stubHTTPTransport(t, func(req *http.Request) (*http.Response, error) {
 			return nil, errors.New("network down")

@@ -22,6 +22,12 @@ func TestRenderToFile(t *testing.T) {
 			contains: "SERVICE_NAME=my-backend",
 		},
 		{
+			name:     "render application properties file",
+			file:     "templates/project/application.properties.tmpl",
+			data:     Data{AppName: "my-backend"},
+			contains: "app.name=${SERVICE_NAME:my-backend}",
+		},
+		{
 			name:      "template not found",
 			file:      "templates/project/does-not-exist.tmpl",
 			wantError: true,
@@ -156,12 +162,15 @@ func TestRenderKeelTemplateForInitMode(t *testing.T) {
 	}
 	text := string(content)
 
-	if !strings.Contains(text, "name    = \"\"") || !strings.Contains(text, "version = \"\"") {
-		t.Fatalf("expected init keel.toml to keep [app] section with empty values, got: %s", text)
+	if !strings.Contains(text, "[project]") || !strings.Contains(text, "config  = \"application.properties\"") {
+		t.Fatalf("expected init keel.toml to include [project] metadata, got: %s", text)
 	}
 
 	if !strings.Contains(text, "dev   = \"air\"") {
 		t.Fatalf("expected init keel.toml to include air script, got: %s", text)
+	}
+	if !strings.Contains(text, "build = \"go build -o bin/my-backend ./cmd\"") {
+		t.Fatalf("expected init keel.toml to include package build script, got: %s", text)
 	}
 }
 

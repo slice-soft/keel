@@ -55,6 +55,8 @@ func runStep(s Step, addonName string) error {
 		return stepGoGet(s)
 	case "env":
 		return stepEnv(s)
+	case "property":
+		return stepProperty(s)
 	case "main_import":
 		return stepMainImport(s)
 	case "main_code":
@@ -130,6 +132,24 @@ func stepEnv(s Step) error {
 	}
 	if addedExample {
 		fmt.Printf("  → added %s to .env.example\n", s.Key)
+	}
+
+	return nil
+}
+
+// stepProperty adds key=value to application.properties if the key is not
+// already present.
+func stepProperty(s Step) error {
+	if strings.TrimSpace(s.Key) == "" {
+		return fmt.Errorf("property step is missing 'key'")
+	}
+
+	added, err := appendPropertyKey("application.properties", s.Key, s.Example, s.Description)
+	if err != nil {
+		return err
+	}
+	if added {
+		fmt.Printf("  → added %s to application.properties\n", s.Key)
 	}
 
 	return nil
@@ -335,32 +355,73 @@ func appendEnvKey(filename, key, value string) (bool, error) {
 	return true, nil
 }
 
+func appendPropertyKey(filename, key, value, description string) (bool, error) {
+	existing, _ := os.ReadFile(filename)
+	if _, ok := lookupPropertyValue(string(existing), key); ok {
+		return false, nil
+	}
+
+	var builder strings.Builder
+	if len(existing) > 0 && existing[len(existing)-1] != '\n' {
+		builder.WriteByte('\n')
+	}
+	builder.WriteByte('\n')
+	if strings.TrimSpace(description) != "" {
+		builder.WriteString("# ")
+		builder.WriteString(strings.TrimSpace(description))
+		builder.WriteByte('\n')
+	}
+	builder.WriteString(key)
+	builder.WriteByte('=')
+	builder.WriteString(value)
+	builder.WriteByte('\n')
+
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(builder.String()); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func lookupPropertyValue(content, key string) (string, bool) {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "!") {
+			continue
+		}
+
+		separator := strings.IndexAny(trimmed, "=:")
+		if separator == -1 {
+			continue
+		}
+
+		lineKey := strings.TrimSpace(trimmed[:separator])
+		if lineKey != key {
+			continue
+		}
+
+		return strings.TrimSpace(trimmed[separator+1:]), true
+	}
+	return "", false
+}
+
 // mergeIntoKeelToml writes the addon's metadata into keel.toml.
 // It collects env vars from the manifest's env steps and calls keeltoml.MergeAddon.
 // A missing keel.toml is created automatically; errors are non-fatal (caller prints a warning).
 func mergeIntoKeelToml(m *Manifest) error {
-	var envEntries []keeltoml.EnvEntry
-	for _, step := range m.Steps {
-		if step.Type != "env" || step.Key == "" {
-			continue
-		}
-		envEntries = append(envEntries, keeltoml.EnvEntry{
-			Key:         step.Key,
-			Source:      m.Name,
-			Required:    step.Required,
-			Secret:      step.Secret,
-			Description: step.Description,
-		})
-	}
-
 	changed, err := keeltoml.MergeAddon(
 		keeltoml.DefaultPath,
-		m.Name,
-		m.Version,
+		addonIDForManifest(m),
+		installedAddonVersion(m),
 		m.Repo,
-		m.Capabilities,
-		m.Resources,
-		envEntries,
+		nil,
+		nil,
+		nil,
 	)
 	if err != nil {
 		return err
@@ -369,6 +430,47 @@ func mergeIntoKeelToml(m *Manifest) error {
 		fmt.Printf("  → updated keel.toml\n")
 	}
 	return nil
+}
+
+func addonIDForManifest(m *Manifest) string {
+	if strings.HasPrefix(m.Repo, "github.com/slice-soft/ss-keel-") {
+		return strings.TrimPrefix(m.Repo, "github.com/slice-soft/ss-keel-")
+	}
+	if strings.HasPrefix(m.Name, "ss-keel-") {
+		return strings.TrimPrefix(m.Name, "ss-keel-")
+	}
+	if m.Name != "" {
+		return m.Name
+	}
+	return filepath.Base(m.Repo)
+}
+
+func installedAddonVersion(m *Manifest) string {
+	if strings.TrimSpace(m.Repo) == "" {
+		return strings.TrimSpace(m.Version)
+	}
+
+	goMod, err := os.ReadFile("go.mod")
+	if err != nil {
+		return strings.TrimSpace(m.Version)
+	}
+
+	lines := strings.Split(string(goMod), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		switch {
+		case len(fields) >= 3 && fields[0] == "require" && fields[1] == m.Repo:
+			return fields[2]
+		case fields[0] == m.Repo:
+			return fields[1]
+		}
+	}
+
+	return strings.TrimSpace(m.Version)
 }
 
 func stepNote(s Step) error {

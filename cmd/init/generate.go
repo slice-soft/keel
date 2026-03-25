@@ -30,7 +30,7 @@ func generateKeelConfig(destPath string, useAir, airConfigExists bool) error {
 	}
 
 	data := generator.NewInitData(appName, useAir, airConfigExists)
-	files := buildInitFiles(destPath, useAir, airConfigExists)
+	files := buildInitFiles(destPath, useAir, airConfigExists, fileExists("application.properties"))
 
 	for _, f := range files {
 		if err := generator.RenderToFile(f.TemplatePath, f.Destination, data); err != nil {
@@ -41,12 +41,19 @@ func generateKeelConfig(destPath string, useAir, airConfigExists bool) error {
 	return nil
 }
 
-func buildInitFiles(keelConfigPath string, useAir, airConfigExists bool) []newcmd.ProjectFile {
+func buildInitFiles(keelConfigPath string, useAir, airConfigExists, applicationPropertiesExists bool) []newcmd.ProjectFile {
 	files := []newcmd.ProjectFile{
 		{
 			TemplatePath: "templates/project/keel.toml.tmpl",
 			Destination:  keelConfigPath,
 		},
+	}
+
+	if !applicationPropertiesExists {
+		files = append(files, newcmd.ProjectFile{
+			TemplatePath: "templates/project/application.properties.tmpl",
+			Destination:  "application.properties",
+		})
 	}
 
 	if useAir && !airConfigExists {

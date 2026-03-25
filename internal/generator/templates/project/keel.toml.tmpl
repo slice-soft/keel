@@ -1,10 +1,14 @@
-[app]
+[project]
 {{- if eq .TemplateMode "init" }}
 name    = ""
+module  = ""
 version = ""
+config  = "application.properties"
 {{- else }}
 name    = "{{.AppName}}"
+module  = "{{.ModuleName}}"
 version = "1.0.0"
+config  = "application.properties"
 {{- end }}
 
 [scripts]
@@ -15,9 +19,9 @@ dev   = "air -c .air.toml"
 dev   = "air"
 {{- end }}
 {{- else }}
-dev   = "go run ./cmd/main.go"
+dev   = "go run ./cmd"
 {{- end }}
-build = "go build -o bin/{{.AppName}} ./cmd/main.go"
+build = "go build -o bin/{{.AppName}} ./cmd"
 test  = "go test ./..."
 lint  = "golangci-lint run"
 
@@ -28,4 +32,7 @@ air = true
 {{- end }}
 {{- if .UseEnv }}
 env = true
+{{- end }}
+{{- if .UseStarterModule }}
+starter_module = true
 {{- end }}

@@ -46,6 +46,7 @@ func buildProjectFiles(appName string, includeAirConfig, useEnv, includeStarterM
 		{TemplatePath: "templates/project/main.go.tmpl", Destination: filepath.Join(appName, "cmd", "main.go")},
 		{TemplatePath: "templates/project/go.mod.tmpl", Destination: filepath.Join(appName, "go.mod")},
 		{TemplatePath: "templates/project/keel.toml.tmpl", Destination: filepath.Join(appName, "keel.toml")},
+		{TemplatePath: "templates/project/application.properties.tmpl", Destination: filepath.Join(appName, "application.properties")},
 		{TemplatePath: "templates/project/readme.tmpl", Destination: filepath.Join(appName, "README.md")},
 		{TemplatePath: "templates/project/gitignore.tmpl", Destination: filepath.Join(appName, ".gitignore")},
 	}
