@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/slice-soft/keel/compare/v1.9.0...v1.10.0) (2026-03-25)
+
+
+### Features
+
+* add `keel env` command group for managing environment variables ([#31](https://github.com/slice-soft/keel/issues/31)) ([121e13a](https://github.com/slice-soft/keel/commit/121e13a545e342c7edfce805968ea82e84882782))
+
 ## [1.9.0](https://github.com/slice-soft/keel/compare/v1.8.0...v1.9.0) (2026-03-21)
 
 
