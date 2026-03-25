@@ -14,12 +14,14 @@ const addonManifestFile = "keel-addon.json"
 
 // Manifest is the keel-addon.json structure from an addon repo.
 type Manifest struct {
-	Name        string   `json:"name"`
-	Version     string   `json:"version"`
-	Description string   `json:"description"`
-	Repo        string   `json:"repo"`
-	DependsOn   []string `json:"depends_on,omitempty"`
-	Steps       []Step   `json:"steps"`
+	Name         string   `json:"name"`
+	Version      string   `json:"version"`
+	Description  string   `json:"description"`
+	Repo         string   `json:"repo"`
+	DependsOn    []string `json:"depends_on,omitempty"`
+	Capabilities []string `json:"capabilities,omitempty"`
+	Resources    []string `json:"resources,omitempty"`
+	Steps        []Step   `json:"steps"`
 }
 
 // Step is a single installation action defined in keel-addon.json.
@@ -34,6 +36,8 @@ type Step struct {
 	Key         string `json:"key,omitempty"`
 	Example     string `json:"example,omitempty"`
 	Description string `json:"description,omitempty"`
+	Required    bool   `json:"required,omitempty"`
+	Secret      bool   `json:"secret,omitempty"`
 	Message     string `json:"message,omitempty"`
 
 	// main_import
