@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/slice-soft/keel/internal/gomod"
+	"github.com/slice-soft/keel/internal/keeltoml"
 )
 
 var execCommand = exec.Command
@@ -32,6 +33,11 @@ func Install(m *Manifest) error {
 		fmt.Printf("  ⚠  %v\n", err)
 	} else if err := gomod.NormalizeDirective("go.mod"); err != nil {
 		fmt.Printf("  ⚠  go.mod normalization failed: %v\n", err)
+	}
+
+	// Update keel.toml — only reached when all steps succeeded (natural rollback).
+	if err := mergeIntoKeelToml(m); err != nil {
+		fmt.Printf("  ⚠  could not update keel.toml: %v\n", err)
 	}
 
 	for _, step := range notes {
@@ -327,6 +333,42 @@ func appendEnvKey(filename, key, value string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// mergeIntoKeelToml writes the addon's metadata into keel.toml.
+// It collects env vars from the manifest's env steps and calls keeltoml.MergeAddon.
+// A missing keel.toml is created automatically; errors are non-fatal (caller prints a warning).
+func mergeIntoKeelToml(m *Manifest) error {
+	var envEntries []keeltoml.EnvEntry
+	for _, step := range m.Steps {
+		if step.Type != "env" || step.Key == "" {
+			continue
+		}
+		envEntries = append(envEntries, keeltoml.EnvEntry{
+			Key:         step.Key,
+			Source:      m.Name,
+			Required:    step.Required,
+			Secret:      step.Secret,
+			Description: step.Description,
+		})
+	}
+
+	changed, err := keeltoml.MergeAddon(
+		keeltoml.DefaultPath,
+		m.Name,
+		m.Version,
+		m.Repo,
+		m.Capabilities,
+		m.Resources,
+		envEntries,
+	)
+	if err != nil {
+		return err
+	}
+	if changed {
+		fmt.Printf("  → updated keel.toml\n")
+	}
+	return nil
 }
 
 func stepNote(s Step) error {
