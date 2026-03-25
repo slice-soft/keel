@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/slice-soft/keel/compare/v1.10.0...v1.11.0) (2026-03-25)
+
+
+### Features
+
+* refactor configuration handling and add application.properties support ([#33](https://github.com/slice-soft/keel/issues/33)) ([e154183](https://github.com/slice-soft/keel/commit/e154183c5977b8dd628e7718fd7d143ab39f7966))
+
 ## [1.10.0](https://github.com/slice-soft/keel/compare/v1.9.0...v1.10.0) (2026-03-25)
 
 
