@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/slice-soft/keel/compare/v1.11.0...v1.12.0) (2026-03-26)
+
+
+### Features
+
+* add tests for dependency handling and project readiness checks ([#35](https://github.com/slice-soft/keel/issues/35)) ([b7ec1a7](https://github.com/slice-soft/keel/commit/b7ec1a72983f826cfe1c6e72501397db66b3a4f8))
+
 ## [1.11.0](https://github.com/slice-soft/keel/compare/v1.10.0...v1.11.0) (2026-03-25)
 
 
