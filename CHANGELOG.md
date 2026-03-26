@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/slice-soft/keel/compare/v1.13.0...v1.14.0) (2026-03-26)
+
+
+### Features
+
+* enhance addon installation prompts with auto-approval and non-interactive options; add warnings for insecure placeholder secrets in doctor checks ([#38](https://github.com/slice-soft/keel/issues/38)) ([9ddd656](https://github.com/slice-soft/keel/commit/9ddd6567bde256ab499436e521863c3d65f80ade))
+
 ## [1.13.0](https://github.com/slice-soft/keel/compare/v1.12.0...v1.13.0) (2026-03-26)
 
 
