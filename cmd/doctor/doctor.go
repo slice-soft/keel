@@ -1,8 +1,10 @@
 package doctor
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/slice-soft/keel/internal/appproperties"
@@ -31,6 +33,8 @@ var (
 	readGoModFn                 = func() ([]byte, error) { return os.ReadFile("go.mod") }
 	readDotEnvFn                = func() ([]byte, error) { return os.ReadFile(".env") }
 	lookupOSEnvFn               = os.LookupEnv
+	runGoModTidyDiffFn          = func() (string, error) { return runGoCommand("mod", "tidy", "-diff") }
+	runGoBuildFn                = func() (string, error) { return runGoCommand("build", "./...") }
 )
 
 func runDoctor(_ *cobra.Command, _ []string) error {
@@ -58,6 +62,8 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	case ok:
 		checkRequiredEnvVars(kt, string(envData), &hasErrors)
 	}
+
+	checkCompileReadiness(&hasErrors)
 
 	printSummary(hasErrors)
 	return summaryErr(hasErrors)
@@ -172,6 +178,37 @@ func checkRequiredPropertyEnvVars(doc *appproperties.Document, dotEnv string, ha
 	}
 }
 
+func checkCompileReadiness(hasErrors *bool) {
+	if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
+		checkWarn("go.mod not found — skipping module readiness checks")
+		return
+	}
+
+	if _, err := os.Stat("cmd/main.go"); os.IsNotExist(err) {
+		checkWarn("cmd/main.go not found — skipping compile-readiness checks")
+		return
+	}
+
+	tidyOutput, err := runGoModTidyDiffFn()
+	if err != nil {
+		checkErr("go.mod/go.sum are not tidy — run: go mod tidy")
+		printCommandOutput(tidyOutput)
+		checkWarn("skipping go build ./... until module metadata is clean")
+		*hasErrors = true
+		return
+	}
+	checkOk("go.mod/go.sum are tidy")
+
+	buildOutput, err := runGoBuildFn()
+	if err != nil {
+		checkErr("go build ./... failed")
+		printCommandOutput(buildOutput)
+		*hasErrors = true
+		return
+	}
+	checkOk("go build ./... passed")
+}
+
 func printSummary(hasErrors bool) {
 	fmt.Println()
 	if hasErrors {
@@ -199,4 +236,31 @@ func checkErr(msg string) {
 
 func checkWarn(msg string) {
 	fmt.Printf("  ⚠  %s\n", msg)
+}
+
+func runGoCommand(args ...string) (string, error) {
+	cmd := exec.Command("go", args...)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	err := cmd.Run()
+	return strings.TrimSpace(output.String()), err
+}
+
+func printCommandOutput(raw string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return
+	}
+
+	lines := strings.Split(raw, "\n")
+	if len(lines) > 8 {
+		lines = append(lines[:8], "...")
+	}
+
+	for _, line := range lines {
+		fmt.Printf("     %s\n", line)
+	}
 }

@@ -292,3 +292,68 @@ func TestRunAddInvalidProject(t *testing.T) {
 		t.Fatalf("expected invalid project error, got %v", err)
 	}
 }
+
+func TestHandleDependencies_DefaultYesInstallsMissingDependency(t *testing.T) {
+	resetAddDeps(t)
+	setupKeelProject(t)
+	setStdin(t, "\n")
+
+	fetchManifestCalls := 0
+	installCalls := 0
+
+	fetchManifestFn = func(repo string) (*addon.Manifest, error) {
+		fetchManifestCalls++
+		if repo != "github.com/slice-soft/ss-keel-jwt" {
+			t.Fatalf("unexpected dependency repo: %q", repo)
+		}
+		return &addon.Manifest{Name: "ss-keel-jwt"}, nil
+	}
+	installAddonFn = func(m *addon.Manifest) error {
+		installCalls++
+		if m.Name != "ss-keel-jwt" {
+			t.Fatalf("unexpected dependency manifest: %+v", m)
+		}
+		return nil
+	}
+
+	reg := &addon.Registry{
+		Addons: []addon.RegistryEntry{
+			{Alias: "jwt", Repo: "github.com/slice-soft/ss-keel-jwt"},
+		},
+	}
+
+	if err := handleDependencies([]string{"jwt"}, reg); err != nil {
+		t.Fatalf("handleDependencies returned error: %v", err)
+	}
+	if fetchManifestCalls != 1 {
+		t.Fatalf("expected dependency manifest to be fetched once, got %d", fetchManifestCalls)
+	}
+	if installCalls != 1 {
+		t.Fatalf("expected dependency installer to run once, got %d", installCalls)
+	}
+}
+
+func TestHandleDependencies_SkipWhenUserAnswersNo(t *testing.T) {
+	resetAddDeps(t)
+	setupKeelProject(t)
+	setStdin(t, "n\n")
+
+	fetchManifestFn = func(repo string) (*addon.Manifest, error) {
+		t.Fatalf("dependency manifest should not be fetched when user declines")
+		return nil, nil
+	}
+	installAddonFn = func(m *addon.Manifest) error {
+		t.Fatalf("dependency installer should not run when user declines")
+		return nil
+	}
+
+	reg := &addon.Registry{
+		Addons: []addon.RegistryEntry{
+			{Alias: "jwt", Repo: "github.com/slice-soft/ss-keel-jwt"},
+		},
+	}
+
+	if err := handleDependencies([]string{"jwt"}, reg); err != nil {
+		t.Fatalf("handleDependencies returned error: %v", err)
+	}
+}
