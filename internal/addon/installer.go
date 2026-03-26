@@ -31,8 +31,6 @@ func Install(m *Manifest) error {
 
 	if err := runGoModTidy(); err != nil {
 		fmt.Printf("  ⚠  %v\n", err)
-	} else if err := gomod.NormalizeDirective("go.mod"); err != nil {
-		fmt.Printf("  ⚠  go.mod normalization failed: %v\n", err)
 	}
 
 	// Update keel.toml — only reached when all steps succeeded (natural rollback).

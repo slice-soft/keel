@@ -369,8 +369,8 @@ func TestRunPostSetupAndCreateInitialCommit(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to read go.mod: %v", err)
 		}
-		if !strings.Contains(string(goModContent), "go 1.25\n") {
-			t.Fatalf("expected normalized go directive, got %q", string(goModContent))
+		if !strings.Contains(string(goModContent), "go 1.25.7\n") {
+			t.Fatalf("expected runPostSetup to preserve go.mod after tidy, got %q", string(goModContent))
 		}
 	})
 
