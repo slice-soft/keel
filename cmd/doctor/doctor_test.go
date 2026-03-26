@@ -110,6 +110,19 @@ func TestDoctor_RequiredPropertyEnvVarFromOSEnv(t *testing.T) {
 	}
 }
 
+func TestDoctor_PlaceholderSecretOnlyWarns(t *testing.T) {
+	setupDir(t)
+
+	writeFile(t, keeltoml.DefaultPath, "[project]\nname = \"demo\"\n")
+	writeFile(t, "application.properties", "jwt.secret=${JWT_SECRET:change-me-in-production}\n")
+	writeFile(t, ".env", "# empty\n")
+
+	cmd := doctor.NewCommand()
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected placeholder secret to warn without failing, got: %v", err)
+	}
+}
+
 func TestDoctor_LegacyFallbackToKeelTomlEnv(t *testing.T) {
 	setupDir(t)
 

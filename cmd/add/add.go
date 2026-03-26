@@ -11,7 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var forceRefresh bool
+var (
+	forceRefresh bool
+	autoApprove  bool
+	noInput      bool
+)
 
 const invalidProjectMessage = "keel add must be executed inside a Keel project"
 
@@ -19,7 +23,22 @@ var (
 	fetchRegistryFn = addon.FetchRegistry
 	fetchManifestFn = addon.FetchManifest
 	installAddonFn  = addon.Install
+	stdinIsTTYFn    = func() bool {
+		if os.Stdin == nil {
+			return false
+		}
+		info, err := os.Stdin.Stat()
+		if err != nil {
+			return false
+		}
+		return (info.Mode() & os.ModeCharDevice) != 0
+	}
 )
+
+type promptPolicy struct {
+	autoApprove    bool
+	nonInteractive bool
+}
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,6 +53,8 @@ func NewCommand() *cobra.Command {
 		RunE: runAdd,
 	}
 	cmd.Flags().BoolVar(&forceRefresh, "refresh", false, "Force refresh of the addon registry cache")
+	cmd.Flags().BoolVarP(&autoApprove, "yes", "y", false, "Auto-accept install prompts, including addon dependencies")
+	cmd.Flags().BoolVar(&noInput, "no-input", false, "Run without prompts; dependency prompts use their default answer")
 	return cmd
 }
 
@@ -51,16 +72,14 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	repo, isOfficial := resolveRepo(target, reg)
+	policy := currentPromptPolicy()
 
 	if !isOfficial {
-		fmt.Printf("\n  ⚠  %q is not in the official Keel addon registry.\n", repo)
-		fmt.Printf("     Verify community addons at: https://github.com/slice-soft/ss-keel-addons\n")
-		fmt.Printf("     Install anyway? [y/N] ")
-
-		reader := bufio.NewReader(os.Stdin)
-		answer, _ := reader.ReadString('\n')
-		if strings.ToLower(strings.TrimSpace(answer)) != "y" {
-			fmt.Println("  Aborted.")
+		confirmed, err := confirmUnofficialInstall(repo, policy)
+		if err != nil {
+			return err
+		}
+		if !confirmed {
 			return nil
 		}
 	}
@@ -73,7 +92,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Resolve and offer to install declared dependencies before the addon itself.
-	if err := handleDependencies(manifest.DependsOn, reg); err != nil {
+	if err := handleDependencies(manifest.DependsOn, reg, policy); err != nil {
 		return err
 	}
 
@@ -85,9 +104,39 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func currentPromptPolicy() promptPolicy {
+	return promptPolicy{
+		autoApprove:    autoApprove,
+		nonInteractive: noInput || !stdinIsTTYFn(),
+	}
+}
+
+func confirmUnofficialInstall(repo string, policy promptPolicy) (bool, error) {
+	fmt.Printf("\n  ⚠  %q is not in the official Keel addon registry.\n", repo)
+	fmt.Printf("     Verify community addons at: https://github.com/slice-soft/ss-keel-addons\n")
+
+	switch {
+	case policy.autoApprove:
+		fmt.Printf("     Auto-confirmed with --yes.\n")
+		return true, nil
+	case policy.nonInteractive:
+		return false, fmt.Errorf("cannot confirm non-official addon %q in non-interactive mode — rerun with --yes", repo)
+	default:
+		fmt.Printf("     Install anyway? [y/N] ")
+
+		reader := bufio.NewReader(os.Stdin)
+		answer, _ := reader.ReadString('\n')
+		if strings.ToLower(strings.TrimSpace(answer)) != "y" {
+			fmt.Println("  Aborted.")
+			return false, nil
+		}
+		return true, nil
+	}
+}
+
 // handleDependencies checks whether the addons listed in depends_on are already
 // installed (present in go.mod) and, if not, offers to install them first.
-func handleDependencies(deps []string, reg *addon.Registry) error {
+func handleDependencies(deps []string, reg *addon.Registry, policy promptPolicy) error {
 	if len(deps) == 0 {
 		return nil
 	}
@@ -108,12 +157,19 @@ func handleDependencies(deps []string, reg *addon.Registry) error {
 		}
 
 		fmt.Printf("\n  ℹ  This addon depends on %q which is not installed yet.\n", dep)
-		fmt.Printf("     Install %q now? [Y/n] ", dep)
+		switch {
+		case policy.autoApprove:
+			fmt.Printf("     Auto-installing dependency with --yes.\n")
+		case policy.nonInteractive:
+			fmt.Printf("     Non-interactive mode: accepting the default answer and installing it.\n")
+		default:
+			fmt.Printf("     Install %q now? [Y/n] ", dep)
 
-		answer, _ := reader.ReadString('\n')
-		if strings.ToLower(strings.TrimSpace(answer)) == "n" {
-			fmt.Printf("  ⚠  Skipped dependency %q — run 'keel add %s' before using this addon.\n", dep, dep)
-			continue
+			answer, _ := reader.ReadString('\n')
+			if strings.ToLower(strings.TrimSpace(answer)) == "n" {
+				fmt.Printf("  ⚠  Skipped dependency %q — run 'keel add %s' before using this addon.\n", dep, dep)
+				continue
+			}
 		}
 
 		fmt.Printf("\n  Installing dependency %s...\n\n", depRepo)

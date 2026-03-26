@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/slice-soft/keel/internal/appproperties"
 	"github.com/slice-soft/keel/internal/keeltoml"
 )
 
@@ -87,6 +88,66 @@ func TestDoctor_FailsWhenBuildFails(t *testing.T) {
 	cmd := NewCommand()
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("expected error when go build fails")
+	}
+}
+
+func TestCheckPlaceholderPropertyEnvVars_WarnsOnInsecureDefault(t *testing.T) {
+	resetDoctorDeps(t)
+
+	doc := &appproperties.Document{
+		EnvVars: []appproperties.EnvVar{
+			{Key: "JWT_SECRET", Default: "change-me-in-production", HasDefault: true},
+		},
+	}
+
+	hasWarnings := false
+	checkPlaceholderPropertyEnvVars(doc, "", &hasWarnings)
+	if !hasWarnings {
+		t.Fatal("expected placeholder property default to trigger warning")
+	}
+}
+
+func TestCheckPlaceholderPropertyEnvVars_DoesNotWarnOnStrongValue(t *testing.T) {
+	resetDoctorDeps(t)
+
+	doc := &appproperties.Document{
+		EnvVars: []appproperties.EnvVar{
+			{Key: "JWT_SECRET", Default: "change-me-in-production", HasDefault: true},
+		},
+	}
+
+	hasWarnings := false
+	checkPlaceholderPropertyEnvVars(doc, "JWT_SECRET=super-secret-value-123\n", &hasWarnings)
+	if hasWarnings {
+		t.Fatal("expected strong secret to avoid warning")
+	}
+}
+
+func TestCheckPlaceholderLegacyEnvVars_WarnsOnLegacyDefault(t *testing.T) {
+	resetDoctorDeps(t)
+
+	kt := &keeltoml.KeelToml{
+		Env: []keeltoml.EnvEntry{
+			{Key: "JWT_SECRET", Secret: true, Default: "change-me-in-production"},
+		},
+	}
+
+	hasWarnings := false
+	checkPlaceholderLegacyEnvVars(kt, "", &hasWarnings)
+	if !hasWarnings {
+		t.Fatal("expected legacy placeholder default to trigger warning")
+	}
+}
+
+func TestSummaryMessage(t *testing.T) {
+	if got := summaryMessage(false, false); got != "  ✓  project looks healthy" {
+		t.Fatalf("unexpected healthy summary: %q", got)
+	}
+	if got := summaryMessage(false, true); got != "  ⚠  project looks healthy, but review warnings before production" {
+		t.Fatalf("unexpected warning summary: %q", got)
+	}
+	if got := summaryMessage(true, true); got != "  ✗  doctor found issues — fix them before running the application" {
+		t.Fatalf("unexpected error summary: %q", got)
 	}
 }
 

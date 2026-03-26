@@ -17,12 +17,18 @@ func resetAddDeps(t *testing.T) {
 	prevFetchManifest := fetchManifestFn
 	prevInstallAddon := installAddonFn
 	prevForceRefresh := forceRefresh
+	prevAutoApprove := autoApprove
+	prevNoInput := noInput
+	prevStdinIsTTY := stdinIsTTYFn
 
 	t.Cleanup(func() {
 		fetchRegistryFn = prevFetchRegistry
 		fetchManifestFn = prevFetchManifest
 		installAddonFn = prevInstallAddon
 		forceRefresh = prevForceRefresh
+		autoApprove = prevAutoApprove
+		noInput = prevNoInput
+		stdinIsTTYFn = prevStdinIsTTY
 	})
 }
 
@@ -90,6 +96,12 @@ func TestNewCommand(t *testing.T) {
 	}
 	if cmd.Flags().Lookup("refresh") == nil {
 		t.Fatalf("expected --refresh flag")
+	}
+	if cmd.Flags().Lookup("yes") == nil {
+		t.Fatalf("expected --yes flag")
+	}
+	if cmd.Flags().Lookup("no-input") == nil {
+		t.Fatalf("expected --no-input flag")
 	}
 }
 
@@ -195,6 +207,7 @@ func TestRunAddCommunityAddonAbort(t *testing.T) {
 	resetAddDeps(t)
 	setupKeelProject(t)
 	setStdin(t, "n\n")
+	stdinIsTTYFn = func() bool { return true }
 
 	calledManifest := false
 	calledInstall := false
@@ -219,11 +232,68 @@ func TestRunAddCommunityAddonAbort(t *testing.T) {
 	}
 }
 
+func TestRunAddCommunityAddonNonInteractiveRequiresYes(t *testing.T) {
+	resetAddDeps(t)
+	setupKeelProject(t)
+
+	noInput = true
+	stdinIsTTYFn = func() bool { return false }
+
+	fetchRegistryFn = func(refresh bool) (*addon.Registry, error) {
+		return nil, nil
+	}
+	fetchManifestFn = func(repo string) (*addon.Manifest, error) {
+		t.Fatalf("manifest should not be fetched without confirmation")
+		return nil, nil
+	}
+	installAddonFn = func(m *addon.Manifest) error {
+		t.Fatalf("installer should not run without confirmation")
+		return nil
+	}
+
+	err := runAdd(nil, []string{"github.com/acme/addon"})
+	if err == nil || !strings.Contains(err.Error(), "rerun with --yes") {
+		t.Fatalf("expected non-interactive confirmation error, got %v", err)
+	}
+}
+
+func TestRunAddCommunityAddonWithYesSkipsPrompt(t *testing.T) {
+	resetAddDeps(t)
+	setupKeelProject(t)
+
+	autoApprove = true
+	noInput = true
+	stdinIsTTYFn = func() bool { return false }
+
+	calledManifest := false
+	calledInstall := false
+
+	fetchRegistryFn = func(refresh bool) (*addon.Registry, error) {
+		return nil, nil
+	}
+	fetchManifestFn = func(repo string) (*addon.Manifest, error) {
+		calledManifest = true
+		return &addon.Manifest{Name: "custom"}, nil
+	}
+	installAddonFn = func(m *addon.Manifest) error {
+		calledInstall = true
+		return nil
+	}
+
+	if err := runAdd(nil, []string{"github.com/acme/addon"}); err != nil {
+		t.Fatalf("expected --yes install to succeed, got %v", err)
+	}
+	if !calledManifest || !calledInstall {
+		t.Fatalf("expected --yes flow to install addon, got manifest=%t install=%t", calledManifest, calledInstall)
+	}
+}
+
 func TestRunAddCommunityAddonErrors(t *testing.T) {
 	t.Run("manifest fetch error", func(t *testing.T) {
 		resetAddDeps(t)
 		setupKeelProject(t)
 		setStdin(t, "y\n")
+		stdinIsTTYFn = func() bool { return true }
 
 		wantErr := errors.New("manifest not found")
 
@@ -248,6 +318,7 @@ func TestRunAddCommunityAddonErrors(t *testing.T) {
 		resetAddDeps(t)
 		setupKeelProject(t)
 		setStdin(t, "y\n")
+		stdinIsTTYFn = func() bool { return true }
 
 		wantErr := errors.New("install failed")
 
@@ -297,6 +368,7 @@ func TestHandleDependencies_DefaultYesInstallsMissingDependency(t *testing.T) {
 	resetAddDeps(t)
 	setupKeelProject(t)
 	setStdin(t, "\n")
+	stdinIsTTYFn = func() bool { return true }
 
 	fetchManifestCalls := 0
 	installCalls := 0
@@ -322,7 +394,7 @@ func TestHandleDependencies_DefaultYesInstallsMissingDependency(t *testing.T) {
 		},
 	}
 
-	if err := handleDependencies([]string{"jwt"}, reg); err != nil {
+	if err := handleDependencies([]string{"jwt"}, reg, promptPolicy{}); err != nil {
 		t.Fatalf("handleDependencies returned error: %v", err)
 	}
 	if fetchManifestCalls != 1 {
@@ -337,6 +409,7 @@ func TestHandleDependencies_SkipWhenUserAnswersNo(t *testing.T) {
 	resetAddDeps(t)
 	setupKeelProject(t)
 	setStdin(t, "n\n")
+	stdinIsTTYFn = func() bool { return true }
 
 	fetchManifestFn = func(repo string) (*addon.Manifest, error) {
 		t.Fatalf("dependency manifest should not be fetched when user declines")
@@ -353,7 +426,37 @@ func TestHandleDependencies_SkipWhenUserAnswersNo(t *testing.T) {
 		},
 	}
 
-	if err := handleDependencies([]string{"jwt"}, reg); err != nil {
+	if err := handleDependencies([]string{"jwt"}, reg, promptPolicy{}); err != nil {
 		t.Fatalf("handleDependencies returned error: %v", err)
+	}
+}
+
+func TestHandleDependencies_NonInteractiveAcceptsDefaultYes(t *testing.T) {
+	resetAddDeps(t)
+	setupKeelProject(t)
+
+	fetchManifestCalls := 0
+	installCalls := 0
+
+	fetchManifestFn = func(repo string) (*addon.Manifest, error) {
+		fetchManifestCalls++
+		return &addon.Manifest{Name: "ss-keel-jwt"}, nil
+	}
+	installAddonFn = func(m *addon.Manifest) error {
+		installCalls++
+		return nil
+	}
+
+	reg := &addon.Registry{
+		Addons: []addon.RegistryEntry{
+			{Alias: "jwt", Repo: "github.com/slice-soft/ss-keel-jwt"},
+		},
+	}
+
+	if err := handleDependencies([]string{"jwt"}, reg, promptPolicy{nonInteractive: true}); err != nil {
+		t.Fatalf("handleDependencies returned error: %v", err)
+	}
+	if fetchManifestCalls != 1 || installCalls != 1 {
+		t.Fatalf("expected dependency auto-install in non-interactive mode, got manifest=%d install=%d", fetchManifestCalls, installCalls)
 	}
 }
