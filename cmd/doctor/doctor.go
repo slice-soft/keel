@@ -43,6 +43,7 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 
 	hasErrors := false
+	hasWarnings := false
 
 	// 1. keel.toml — valid and parseable.
 	kt, ok := checkKeelToml(&hasErrors)
@@ -59,13 +60,15 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	switch {
 	case hasAppProperties:
 		checkRequiredPropertyEnvVars(appDoc, string(envData), &hasErrors)
+		checkPlaceholderPropertyEnvVars(appDoc, string(envData), &hasWarnings)
 	case ok:
 		checkRequiredEnvVars(kt, string(envData), &hasErrors)
+		checkPlaceholderLegacyEnvVars(kt, string(envData), &hasWarnings)
 	}
 
 	checkCompileReadiness(&hasErrors)
 
-	printSummary(hasErrors)
+	printSummary(hasErrors, hasWarnings)
 	return summaryErr(hasErrors)
 }
 
@@ -178,6 +181,48 @@ func checkRequiredPropertyEnvVars(doc *appproperties.Document, dotEnv string, ha
 	}
 }
 
+func checkPlaceholderPropertyEnvVars(doc *appproperties.Document, dotEnv string, hasWarnings *bool) {
+	for _, envVar := range doc.EnvVars {
+		if !looksSensitiveEnvKey(envVar.Key) {
+			continue
+		}
+		value, source, ok := resolveEnvValue(dotEnv, envVar.Key)
+		if !ok && envVar.HasDefault {
+			value = envVar.Default
+			source = "application.properties default"
+			ok = true
+		}
+		if !ok || !isPlaceholderSecretValue(value) {
+			continue
+		}
+		checkWarn(fmt.Sprintf("sensitive var %s uses an insecure placeholder (%s) — replace it before production", envVar.Key, source))
+		*hasWarnings = true
+	}
+}
+
+func checkPlaceholderLegacyEnvVars(kt *keeltoml.KeelToml, dotEnv string, hasWarnings *bool) {
+	if len(kt.Env) == 0 {
+		return
+	}
+
+	for _, envVar := range kt.Env {
+		if !envVar.Secret && !looksSensitiveEnvKey(envVar.Key) {
+			continue
+		}
+		value, source, ok := resolveEnvValue(dotEnv, envVar.Key)
+		if !ok && envVar.Default != "" {
+			value = envVar.Default
+			source = "keel.toml default"
+			ok = true
+		}
+		if !ok || !isPlaceholderSecretValue(value) {
+			continue
+		}
+		checkWarn(fmt.Sprintf("sensitive var %s uses an insecure placeholder (%s) — replace it before production", envVar.Key, source))
+		*hasWarnings = true
+	}
+}
+
 func checkCompileReadiness(hasErrors *bool) {
 	if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
 		checkWarn("go.mod not found — skipping module readiness checks")
@@ -209,13 +254,9 @@ func checkCompileReadiness(hasErrors *bool) {
 	checkOk("go build ./... passed")
 }
 
-func printSummary(hasErrors bool) {
+func printSummary(hasErrors, hasWarnings bool) {
 	fmt.Println()
-	if hasErrors {
-		fmt.Println("  ✗  doctor found issues — fix them before running the application")
-	} else {
-		fmt.Println("  ✓  project looks healthy")
-	}
+	fmt.Println(summaryMessage(hasErrors, hasWarnings))
 	fmt.Println()
 }
 
@@ -236,6 +277,76 @@ func checkErr(msg string) {
 
 func checkWarn(msg string) {
 	fmt.Printf("  ⚠  %s\n", msg)
+}
+
+func summaryMessage(hasErrors, hasWarnings bool) string {
+	switch {
+	case hasErrors:
+		return "  ✗  doctor found issues — fix them before running the application"
+	case hasWarnings:
+		return "  ⚠  project looks healthy, but review warnings before production"
+	default:
+		return "  ✓  project looks healthy"
+	}
+}
+
+func resolveEnvValue(dotEnv, key string) (value, source string, ok bool) {
+	if value, ok := keeltoml.LookupEnvValue(dotEnv, key); ok {
+		return value, ".env", true
+	}
+	if value, ok := lookupOSEnvFn(key); ok {
+		return value, "OS env", true
+	}
+	return "", "", false
+}
+
+func looksSensitiveEnvKey(key string) bool {
+	normalized := strings.ToUpper(strings.TrimSpace(key))
+	switch {
+	case strings.Contains(normalized, "SECRET"):
+		return true
+	case strings.Contains(normalized, "PASSWORD"):
+		return true
+	case strings.Contains(normalized, "PRIVATE_KEY"):
+		return true
+	case strings.Contains(normalized, "SIGNING_KEY"):
+		return true
+	default:
+		return false
+	}
+}
+
+func isPlaceholderSecretValue(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return false
+	}
+
+	normalized := strings.ToLower(trimmed)
+	switch {
+	case strings.Contains(normalized, "change-me"):
+		return true
+	case strings.Contains(normalized, "changeme"):
+		return true
+	case strings.Contains(normalized, "replace-me"):
+		return true
+	case strings.Contains(normalized, "replace_this"):
+		return true
+	case strings.Contains(normalized, "your-secret"):
+		return true
+	case strings.Contains(normalized, "example"):
+		return true
+	case strings.Contains(normalized, "sample"):
+		return true
+	case strings.Contains(normalized, "dev-secret"):
+		return true
+	case strings.Contains(normalized, "test-secret"):
+		return true
+	case normalized == "secret":
+		return true
+	default:
+		return false
+	}
 }
 
 func runGoCommand(args ...string) (string, error) {
