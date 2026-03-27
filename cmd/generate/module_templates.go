@@ -8,7 +8,6 @@ import (
 
 func buildModuleTemplateFiles(moduleName string, repositoryChoice repositoryBackend, transactional bool) []genFile {
 	data := generator.NewData(moduleName)
-	data.PackageName = generator.NewData(moduleName).PackageName
 
 	baseDir := moduleDir(moduleName)
 	profileDir := moduleTemplateProfileDir(repositoryChoice)

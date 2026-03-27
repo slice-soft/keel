@@ -292,16 +292,6 @@ func replaceMainLine(content, match, replacement string) (string, bool) {
 	return content, false
 }
 
-func addMainLineBeforeListen(content, line string) string {
-	markers := []string{
-		"\tlog.Fatal(app.Listen())",
-		"\tif err := app.Listen(); err != nil {",
-		"log.Fatal(app.Listen())",
-		"if err := app.Listen(); err != nil {",
-	}
-	return addMainLineBeforeMarkers(content, line, markers)
-}
-
 func expandEnvExample(example, envFileContent string) string {
 	return envPlaceholderPattern.ReplaceAllStringFunc(example, func(match string) string {
 		submatches := envPlaceholderPattern.FindStringSubmatch(match)

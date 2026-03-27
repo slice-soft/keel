@@ -151,7 +151,7 @@ func runGenerate(_ *cobra.Command, _ []string) error {
 	var appendBuf strings.Builder
 
 	for _, envVar := range declaredEnvVars {
-		if _, ok := keeltoml.LookupEnvValue(string(existing), envVar.Key); ok {
+		if envKeyInFile(string(existing), envVar.Key) {
 			continue
 		}
 
@@ -300,4 +300,24 @@ func buildComment(envVar declaredEnvVar) string {
 		return ""
 	}
 	return "# " + envVar.Description
+}
+
+// envKeyInFile reports whether key is already present in the env file content,
+// either as an active entry (KEY=value) or as a commented-out template (# KEY=value).
+// This prevents runGenerate from appending duplicate commented entries on repeated runs.
+func envKeyInFile(content, key string) bool {
+	if _, ok := keeltoml.LookupEnvValue(content, key); ok {
+		return true
+	}
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		inner := strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
+		if strings.HasPrefix(inner, key+"=") {
+			return true
+		}
+	}
+	return false
 }

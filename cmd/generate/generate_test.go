@@ -1010,14 +1010,6 @@ require github.com/slice-soft/ss-keel-gorm v0.0.0
 	`)
 }
 
-func enableMongoAddonInGoMod(t *testing.T, root string) {
-	t.Helper()
-	mustWrite(t, filepath.Join(root, "go.mod"), `module example.com/app
-
-require github.com/slice-soft/ss-keel-mongo v0.0.0
-	`)
-}
-
 func enableBothAddonsInGoMod(t *testing.T, root string) {
 	t.Helper()
 	mustWrite(t, filepath.Join(root, "go.mod"), `module example.com/app
