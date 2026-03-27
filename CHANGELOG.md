@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/slice-soft/keel/compare/v1.14.0...v1.15.0) (2026-03-27)
+
+
+### Features
+
+* refactor repository generation and enhance error handling; add tests for app properties parsing and tidy command execution ([#40](https://github.com/slice-soft/keel/issues/40)) ([58f32dd](https://github.com/slice-soft/keel/commit/58f32ddc63cda724e31d5dd91c5a32798e748408))
+
 ## [1.14.0](https://github.com/slice-soft/keel/compare/v1.13.0...v1.14.0) (2026-03-26)
 
 
