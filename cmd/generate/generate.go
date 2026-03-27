@@ -198,38 +198,19 @@ func generateRepository(componentName, baseDir, packageOverride string, reposito
 	return createFiles(buildRepositoryFiles(componentName, baseDir, packageOverride, repositoryChoice))
 }
 
-func buildGormRepositoryFiles(componentName, baseDir, packageOverride string) []genFile {
+func buildBackendRepositoryFiles(componentName, baseDir, packageOverride, implTmpl, testTmpl string) []genFile {
 	data := generator.NewData(componentName)
 	if packageOverride != "" {
 		data.PackageName = generator.NewData(packageOverride).PackageName
 	}
 	return []genFile{
 		{
-			template: "templates/repository/repository_gorm.go.tmpl",
+			template: implTmpl,
 			dest:     filepath.Join(baseDir, data.SnakeName+"_repository.go"),
 			data:     data,
 		},
 		{
-			template: "templates/repository/repository_gorm_test.go.tmpl",
-			dest:     filepath.Join(baseDir, data.SnakeName+"_repository_test.go"),
-			data:     data,
-		},
-	}
-}
-
-func buildMongoRepositoryFiles(componentName, baseDir, packageOverride string) []genFile {
-	data := generator.NewData(componentName)
-	if packageOverride != "" {
-		data.PackageName = generator.NewData(packageOverride).PackageName
-	}
-	return []genFile{
-		{
-			template: "templates/repository/repository_mongo.go.tmpl",
-			dest:     filepath.Join(baseDir, data.SnakeName+"_repository.go"),
-			data:     data,
-		},
-		{
-			template: "templates/repository/repository_mongo_test.go.tmpl",
+			template: testTmpl,
 			dest:     filepath.Join(baseDir, data.SnakeName+"_repository_test.go"),
 			data:     data,
 		},
@@ -252,7 +233,7 @@ func buildRepositoryFiles(componentName, baseDir, packageOverride string, reposi
 		})
 	}
 
-	return append(files, repositoryFilesForBackend(componentName, baseDir, packageOverride, repositoryChoice, true)...)
+	return append(files, repositoryFilesForBackend(componentName, baseDir, packageOverride, repositoryChoice)...)
 }
 
 func repositoryEntityTemplateForBackend(repositoryChoice repositoryBackend) string {
@@ -354,15 +335,21 @@ func parseRepositoryBackend(raw string) (repositoryBackend, error) {
 	}
 }
 
-func repositoryFilesForBackend(componentName, baseDir, packageOverride string, repositoryChoice repositoryBackend, includeRegenerateHint bool) []genFile {
+func repositoryFilesForBackend(componentName, baseDir, packageOverride string, repositoryChoice repositoryBackend) []genFile {
 	switch repositoryChoice {
 	case repositoryBackendGorm:
-		return buildGormRepositoryFiles(componentName, baseDir, packageOverride)
+		return buildBackendRepositoryFiles(componentName, baseDir, packageOverride,
+			"templates/repository/repository_gorm.go.tmpl",
+			"templates/repository/repository_gorm_test.go.tmpl",
+		)
 	case repositoryBackendMongo:
-		return buildMongoRepositoryFiles(componentName, baseDir, packageOverride)
+		return buildBackendRepositoryFiles(componentName, baseDir, packageOverride,
+			"templates/repository/repository_mongo.go.tmpl",
+			"templates/repository/repository_mongo_test.go.tmpl",
+		)
 	}
 
-	if includeRegenerateHint && !generator.IsAddonInstalled(gormAddonModulePath) && !generator.IsAddonInstalled(mongoAddonModulePath) {
+	if !generator.IsAddonInstalled(gormAddonModulePath) && !generator.IsAddonInstalled(mongoAddonModulePath) {
 		fmt.Println("  ⚠  no persistence addon found in go.mod — generated stub repository")
 		fmt.Println("     Install an addon with: keel add gorm or keel add mongo")
 	}
@@ -672,17 +659,16 @@ func toControllerRegistrations(names []string, services []generator.ComponentReg
 }
 
 func hasGormBackedRepository(repositories []generator.ComponentRegistration) bool {
-	for _, repo := range repositories {
-		if repo.UsesGormRepo {
-			return true
-		}
-	}
-	return false
+	return hasBackedRepository(repositories, func(r generator.ComponentRegistration) bool { return r.UsesGormRepo })
 }
 
 func hasMongoBackedRepository(repositories []generator.ComponentRegistration) bool {
+	return hasBackedRepository(repositories, func(r generator.ComponentRegistration) bool { return r.UsesMongoRepo })
+}
+
+func hasBackedRepository(repositories []generator.ComponentRegistration, match func(generator.ComponentRegistration) bool) bool {
 	for _, repo := range repositories {
-		if repo.UsesMongoRepo {
+		if match(repo) {
 			return true
 		}
 	}

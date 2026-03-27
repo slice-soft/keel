@@ -70,47 +70,25 @@ func ensureModuleRegisteredInMain(moduleName string) error {
 }
 
 func ensureStandaloneServiceRegisteredInMain(componentName string) error {
-	modulePath := generator.ReadModuleName()
-	if modulePath == "" {
-		return fmt.Errorf(invalidProjectMessage)
+	modulePath, data, err := resolveModuleAndData(componentName)
+	if err != nil {
+		return err
 	}
-
-	data := generator.NewData(componentName)
-	importPath := fmt.Sprintf("\"%s/internal/services\"", modulePath)
-	useLine := fmt.Sprintf("\t_ = services.New%sService(appLogger)", data.PascalName)
-
-	return updateMainGo(func(content string) string {
-		content = ensureAppLoggerBootstrap(content)
-		if !strings.Contains(content, importPath) {
-			content = addImport(content, importPath)
-		}
-		if !strings.Contains(content, useLine) {
-			content = addMainLine(content, useLine)
-		}
-		return content
-	})
+	return ensureImportAndLineInMain(
+		fmt.Sprintf("\"%s/internal/services\"", modulePath),
+		fmt.Sprintf("\t_ = services.New%sService(appLogger)", data.PascalName),
+	)
 }
 
 func ensureStandaloneControllerRegisteredInMain(componentName string) error {
-	modulePath := generator.ReadModuleName()
-	if modulePath == "" {
-		return fmt.Errorf(invalidProjectMessage)
+	modulePath, data, err := resolveModuleAndData(componentName)
+	if err != nil {
+		return err
 	}
-
-	data := generator.NewData(componentName)
-	importPath := fmt.Sprintf("\"%s/internal/controllers\"", modulePath)
-	registerLine := fmt.Sprintf("\tapp.RegisterController(controllers.New%sController(nil, appLogger))", data.PascalName)
-
-	return updateMainGo(func(content string) string {
-		content = ensureAppLoggerBootstrap(content)
-		if !strings.Contains(content, importPath) {
-			content = addImport(content, importPath)
-		}
-		if !strings.Contains(content, registerLine) {
-			content = addMainLine(content, registerLine)
-		}
-		return content
-	})
+	return ensureImportAndLineInMain(
+		fmt.Sprintf("\"%s/internal/controllers\"", modulePath),
+		fmt.Sprintf("\tapp.RegisterController(controllers.New%sController(nil, appLogger))", data.PascalName),
+	)
 }
 
 func ensureInlineStandaloneControllerRegisteredInMain(componentName string) error {
@@ -159,37 +137,39 @@ func ensureSchedulerRegisteredInMain(componentName string) error {
 }
 
 func ensureCheckerRegisteredInMain(componentName string) error {
-	modulePath := generator.ReadModuleName()
-	if modulePath == "" {
-		return fmt.Errorf(invalidProjectMessage)
+	modulePath, data, err := resolveModuleAndData(componentName)
+	if err != nil {
+		return err
 	}
-
-	data := generator.NewData(componentName)
-	importPath := fmt.Sprintf("\"%s/internal/checkers\"", modulePath)
-	registerLine := fmt.Sprintf("\tapp.RegisterHealthChecker(checkers.New%sChecker(appLogger))", data.PascalName)
-
-	return updateMainGo(func(content string) string {
-		content = ensureAppLoggerBootstrap(content)
-		if !strings.Contains(content, importPath) {
-			content = addImport(content, importPath)
-		}
-		if !strings.Contains(content, registerLine) {
-			content = addMainLine(content, registerLine)
-		}
-		return content
-	})
+	return ensureImportAndLineInMain(
+		fmt.Sprintf("\"%s/internal/checkers\"", modulePath),
+		fmt.Sprintf("\tapp.RegisterHealthChecker(checkers.New%sChecker(appLogger))", data.PascalName),
+	)
 }
 
 func ensureHookRegisteredInMain(componentName string) error {
+	modulePath, data, err := resolveModuleAndData(componentName)
+	if err != nil {
+		return err
+	}
+	return ensureImportAndLineInMain(
+		fmt.Sprintf("\"%s/internal/hooks\"", modulePath),
+		fmt.Sprintf("\tapp.OnShutdown(hooks.New%sHook(appLogger).OnShutdown)", data.PascalName),
+	)
+}
+
+// resolveModuleAndData reads the current project's module path and builds naming data for componentName.
+func resolveModuleAndData(componentName string) (string, generator.Data, error) {
 	modulePath := generator.ReadModuleName()
 	if modulePath == "" {
-		return fmt.Errorf(invalidProjectMessage)
+		return "", generator.Data{}, fmt.Errorf(invalidProjectMessage)
 	}
+	return modulePath, generator.NewData(componentName), nil
+}
 
-	data := generator.NewData(componentName)
-	importPath := fmt.Sprintf("\"%s/internal/hooks\"", modulePath)
-	registerLine := fmt.Sprintf("\tapp.OnShutdown(hooks.New%sHook(appLogger).OnShutdown)", data.PascalName)
-
+// ensureImportAndLineInMain adds importPath and registerLine to cmd/main.go if not already present,
+// after ensuring appLogger is bootstrapped.
+func ensureImportAndLineInMain(importPath, registerLine string) error {
 	return updateMainGo(func(content string) string {
 		content = ensureAppLoggerBootstrap(content)
 		if !strings.Contains(content, importPath) {

@@ -58,6 +58,16 @@ func (r *{{.PascalName}}Repository) Update(ctx context.Context, id string, entit
 	return nil
 }
 
+func (r *{{.PascalName}}Repository) Patch(ctx context.Context, id string, patch *{{.PascalName}}Entity) error {
+	_ = ctx
+	_ = id
+	_ = patch
+	if r.log != nil {
+		r.log.Info("patching {{.KebabName}} entity id=%s", id)
+	}
+	return nil
+}
+
 func (r *{{.PascalName}}Repository) Delete(ctx context.Context, id string) error {
 	_ = ctx
 	_ = id

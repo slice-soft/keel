@@ -111,11 +111,8 @@ func writeCompletionScript(homeDir, shell, content string) (string, error) {
 	return path, nil
 }
 
-func sourceLineForShell(shell, scriptPath string) string {
+func sourceLineForShell(_ string, scriptPath string) string {
 	escapedPath := strings.ReplaceAll(scriptPath, "\"", "\\\"")
-	if shell == "fish" {
-		return "source \"" + escapedPath + "\""
-	}
 	return "source \"" + escapedPath + "\""
 }
 

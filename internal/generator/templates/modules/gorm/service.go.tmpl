@@ -58,7 +58,7 @@ func (s *{{.PascalName}}Service) GetByID(ctx context.Context, id string) (*{{.Pa
 
 	entity, err := repository.FindByID(ctx, id)
 	if err != nil {
-		return nil, core.Internal("failed to get {{.KebabName}}", err)
+		return nil, wrap{{.PascalName}}RepositoryError("failed to get {{.KebabName}}", err)
 	}
 	if entity == nil {
 		return nil, core.NotFound("{{.KebabName}} not found")
@@ -79,7 +79,7 @@ func (s *{{.PascalName}}Service) Create(ctx context.Context, req Create{{.Pascal
 	}
 
 	if err := repository.Create(ctx, entity); err != nil {
-		return nil, core.Internal("failed to create {{.KebabName}}", err)
+		return nil, wrap{{.PascalName}}RepositoryError("failed to create {{.KebabName}}", err)
 	}
 
 	response := to{{.PascalName}}Response(*entity)
@@ -101,7 +101,7 @@ func (s *{{.PascalName}}Service) Update(ctx context.Context, id string, req Upda
 
 	entity, err := repository.FindByID(ctx, id)
 	if err != nil {
-		return nil, core.Internal("failed to get {{.KebabName}}", err)
+		return nil, wrap{{.PascalName}}RepositoryError("failed to get {{.KebabName}}", err)
 	}
 	if entity == nil {
 		return nil, core.NotFound("{{.KebabName}} not found")
@@ -110,7 +110,7 @@ func (s *{{.PascalName}}Service) Update(ctx context.Context, id string, req Upda
 	entity.Name = strings.TrimSpace(req.Name)
 
 	if err := repository.Update(ctx, id, entity); err != nil {
-		return nil, core.Internal("failed to update {{.KebabName}}", err)
+		return nil, wrap{{.PascalName}}RepositoryError("failed to update {{.KebabName}}", err)
 	}
 
 	response := to{{.PascalName}}Response(*entity)
@@ -131,7 +131,7 @@ func (s *{{.PascalName}}Service) Patch(ctx context.Context, id string, req Patch
 
 	entity, err := repository.FindByID(ctx, id)
 	if err != nil {
-		return nil, core.Internal("failed to get {{.KebabName}}", err)
+		return nil, wrap{{.PascalName}}RepositoryError("failed to get {{.KebabName}}", err)
 	}
 	if entity == nil {
 		return nil, core.NotFound("{{.KebabName}} not found")
@@ -142,7 +142,7 @@ func (s *{{.PascalName}}Service) Patch(ctx context.Context, id string, req Patch
 	}
 
 	if err := repository.Patch(ctx, id, entity); err != nil {
-		return nil, core.Internal("failed to patch {{.KebabName}}", err)
+		return nil, wrap{{.PascalName}}RepositoryError("failed to patch {{.KebabName}}", err)
 	}
 
 	response := to{{.PascalName}}Response(*entity)
@@ -162,14 +162,14 @@ func (s *{{.PascalName}}Service) Delete(ctx context.Context, id string) error {
 
 	entity, err := repository.FindByID(ctx, id)
 	if err != nil {
-		return core.Internal("failed to get {{.KebabName}}", err)
+		return wrap{{.PascalName}}RepositoryError("failed to get {{.KebabName}}", err)
 	}
 	if entity == nil {
 		return core.NotFound("{{.KebabName}} not found")
 	}
 
 	if err := repository.Delete(ctx, id); err != nil {
-		return core.Internal("failed to delete {{.KebabName}}", err)
+		return wrap{{.PascalName}}RepositoryError("failed to delete {{.KebabName}}", err)
 	}
 
 	if s.log != nil {
@@ -193,4 +193,17 @@ func to{{.PascalName}}Response(entity {{.PascalName}}Entity) {{.PascalName}}Resp
 		CreatedAt: entity.CreatedAt,
 		UpdatedAt: entity.UpdatedAt,
 	}
+}
+
+func wrap{{.PascalName}}RepositoryError(message string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var kerr *core.KError
+	if errors.As(err, &kerr) {
+		return err
+	}
+
+	return core.Internal(message, err)
 }
