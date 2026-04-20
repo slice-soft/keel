@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/slice-soft/keel/compare/v1.15.0...v1.16.0) (2026-04-20)
+
+
+### Features
+
+* add telemetry command for managing anonymous usage data collection ([#42](https://github.com/slice-soft/keel/issues/42)) ([a825b3c](https://github.com/slice-soft/keel/commit/a825b3c149c71c45c75a8e8647e2fa0c303f4edc))
+
 ## [1.15.0](https://github.com/slice-soft/keel/compare/v1.14.0...v1.15.0) (2026-03-27)
 
 
