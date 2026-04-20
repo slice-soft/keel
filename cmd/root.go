@@ -13,6 +13,8 @@ import (
 	initcmd "github.com/slice-soft/keel/cmd/init"
 	"github.com/slice-soft/keel/cmd/new"
 	"github.com/slice-soft/keel/cmd/run"
+	telemetrycmd "github.com/slice-soft/keel/cmd/telemetry"
+	"github.com/slice-soft/keel/internal/telemetry"
 	"github.com/slice-soft/keel/internal/updater"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +34,7 @@ var rootCmd = &cobra.Command{
 
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		updateCh = updater.CheckAndNotify(version)
+		telemetry.Send(cmd.Name(), version)
 	},
 
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -65,6 +68,7 @@ func init() {
 	rootCmd.AddCommand(run.NewCommand())
 	rootCmd.AddCommand(doctor.NewCommand())
 	rootCmd.AddCommand(envCmd.NewCommand())
+	rootCmd.AddCommand(telemetrycmd.NewCommand())
 }
 
 func syncRootVersionOutput() {
