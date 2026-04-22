@@ -129,7 +129,12 @@ func execute(genType, rawName string, opts Options) error {
 		if err := ensureModuleRegisteredInMain(parsed.componentName); err != nil {
 			return err
 		}
-		return runGoModTidyFn()
+		if err := runGoModTidyFn(); err != nil {
+			return err
+		}
+		fmt.Println("  ✓  go mod tidy")
+		fmt.Printf("  ✓  module %q generated successfully\n", parsed.componentName)
+		return nil
 	}
 
 	if opts.TransactionalModule {
