@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/slice-soft/keel/compare/v1.17.0...v1.18.0) (2026-04-22)
+
+
+### Features
+
+* add OAuth configuration checks and enhance go.mod update summary ([#46](https://github.com/slice-soft/keel/issues/46)) ([e529725](https://github.com/slice-soft/keel/commit/e5297254acdbe6a358511a2f95a015654e5739ef))
+
 ## [1.17.0](https://github.com/slice-soft/keel/compare/v1.16.0...v1.17.0) (2026-04-22)
 
 
