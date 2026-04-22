@@ -18,6 +18,8 @@ var envPlaceholderPattern = regexp.MustCompile(`\{\{\s*([A-Z0-9_]+)\s*\}\}`)
 
 // Install executes all steps defined in the manifest inside the current Keel project.
 func Install(m *Manifest) error {
+	snap := newInstallSnapshot(m)
+
 	var notes []Step
 	for _, step := range m.Steps {
 		if step.Type == "note" {
@@ -25,6 +27,8 @@ func Install(m *Manifest) error {
 			continue
 		}
 		if err := runStep(step, m.Name); err != nil {
+			fmt.Printf("  ⚠  reverting changes\n")
+			snap.restore()
 			return fmt.Errorf("step %q failed: %w", step.Type, err)
 		}
 	}
@@ -33,7 +37,7 @@ func Install(m *Manifest) error {
 		fmt.Printf("  ⚠  %v\n", err)
 	}
 
-	// Update keel.toml — only reached when all steps succeeded (natural rollback).
+	// Update keel.toml — only reached when all steps succeeded.
 	if err := mergeIntoKeelToml(m); err != nil {
 		fmt.Printf("  ⚠  could not update keel.toml: %v\n", err)
 	}
@@ -45,6 +49,54 @@ func Install(m *Manifest) error {
 	}
 
 	return nil
+}
+
+// installSnapshot captures the content of every file an addon install can
+// modify. Restoring it brings those files back to their exact pre-install state,
+// including any uncommitted changes the user had before running keel add.
+type installSnapshot struct {
+	// nil value means the file did not exist before install; restore deletes it.
+	files map[string][]byte
+}
+
+func newInstallSnapshot(m *Manifest) *installSnapshot {
+	targets := []string{
+		"go.mod", "go.sum",
+		".env", ".env.example",
+		"application.properties",
+		"cmd/main.go",
+	}
+	for _, s := range m.Steps {
+		if s.Type == "create_provider_file" && s.Filename != "" {
+			targets = append(targets, s.Filename)
+		}
+	}
+
+	snap := &installSnapshot{files: make(map[string][]byte, len(targets))}
+	for _, path := range targets {
+		data, err := os.ReadFile(path)
+		if os.IsNotExist(err) {
+			snap.files[path] = nil
+		} else if err == nil {
+			b := make([]byte, len(data))
+			copy(b, data)
+			snap.files[path] = b
+		}
+		// unreadable for other reasons: skip — cannot restore what we cannot read
+	}
+	return snap
+}
+
+// restore reverts every snapshotted file to its pre-install state.
+// Files that did not exist before install are removed.
+func (s *installSnapshot) restore() {
+	for path, content := range s.files {
+		if content == nil {
+			_ = os.Remove(path)
+		} else {
+			_ = os.WriteFile(path, content, 0644)
+		}
+	}
 }
 
 func runStep(s Step, addonName string) error {
@@ -398,26 +450,60 @@ func lookupPropertyValue(content, key string) (string, bool) {
 	return "", false
 }
 
-// mergeIntoKeelToml writes the addon's metadata into keel.toml.
-// It collects env vars from the manifest's env steps and calls keeltoml.MergeAddon.
+// mergeIntoKeelToml writes the addon's metadata into keel.toml and validates
+// the result. If the file becomes invalid TOML after the write, it is restored
+// to its pre-merge state and an error is returned.
 // A missing keel.toml is created automatically; errors are non-fatal (caller prints a warning).
 func mergeIntoKeelToml(m *Manifest) error {
+	before, _ := os.ReadFile(keeltoml.DefaultPath)
+
 	changed, err := keeltoml.MergeAddon(
 		keeltoml.DefaultPath,
 		addonIDForManifest(m),
 		installedAddonVersion(m),
 		m.Repo,
-		nil,
-		nil,
-		nil,
+		m.Capabilities,
+		m.Resources,
+		envEntriesFromSteps(m),
 	)
 	if err != nil {
 		return err
 	}
+
+	if _, validateErr := keeltoml.Load(keeltoml.DefaultPath); validateErr != nil {
+		if before == nil {
+			_ = os.Remove(keeltoml.DefaultPath)
+		} else {
+			_ = os.WriteFile(keeltoml.DefaultPath, before, 0644)
+		}
+		return fmt.Errorf("keel.toml became invalid after merge — reverted: %w", validateErr)
+	}
+
 	if changed {
 		fmt.Printf("  → updated keel.toml\n")
 	}
 	return nil
+}
+
+// envEntriesFromSteps extracts env step metadata from the manifest and maps it
+// to keeltoml.EnvEntry so capabilities, secrets, and descriptions are persisted.
+func envEntriesFromSteps(m *Manifest) []keeltoml.EnvEntry {
+	source := addonIDForManifest(m)
+	var entries []keeltoml.EnvEntry
+	for _, s := range m.Steps {
+		if s.Type != "env" || s.Key == "" {
+			continue
+		}
+		entries = append(entries, keeltoml.EnvEntry{
+			Key:         s.Key,
+			Source:      source,
+			Required:    s.Required,
+			Secret:      s.Secret,
+			Default:     s.Example,
+			Description: s.Description,
+		})
+	}
+	return entries
 }
 
 func addonIDForManifest(m *Manifest) string {

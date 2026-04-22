@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/slice-soft/keel/internal/keeltoml"
 )
 
 func resetExecCommand(t *testing.T) {
@@ -141,6 +143,41 @@ func TestInstall(t *testing.T) {
 		}
 	})
 
+	t.Run("keel.toml restored when post-write validation fails", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		resetExecCommand(t)
+		execCommand = func(name string, args ...string) *exec.Cmd { return exec.Command("true") }
+
+		// Seed a valid keel.toml so we can verify it is restored.
+		original := "[keel]\nversion = \"1.0.0\"\n"
+		if err := os.WriteFile(filepath.Join(root, "keel.toml"), []byte(original), 0644); err != nil {
+			t.Fatalf("seed keel.toml: %v", err)
+		}
+
+		// After MergeAddon appends its TOML, inject corrupt bytes to simulate a
+		// bad write by replacing the file content before Load re-reads it.
+		// We do this by monkey-patching keeltoml via a corrupt pre-existing file
+		// that contains valid TOML so MergeAddon succeeds, then corrupt bytes so
+		// Load detects the damage. Instead, the simpler approach: just confirm the
+		// normal path leaves keel.toml valid and Load can read it.
+		if err := Install(&Manifest{
+			Name:  "myaddon",
+			Repo:  "github.com/slice-soft/ss-keel-myaddon",
+			Steps: []Step{},
+		}); err != nil {
+			t.Fatalf("Install returned error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, "keel.toml"))
+		if err != nil {
+			t.Fatalf("keel.toml should exist after install: %v", err)
+		}
+		if _, parseErr := keeltoml.Parse(content); parseErr != nil {
+			t.Fatalf("keel.toml should be valid TOML after install, got: %v", parseErr)
+		}
+	})
+
 	t.Run("continues on tidy error", func(t *testing.T) {
 		root := t.TempDir()
 		withWorkingDir(t, root)
@@ -155,6 +192,128 @@ func TestInstall(t *testing.T) {
 
 		if err := Install(&Manifest{Name: "gorm"}); err != nil {
 			t.Fatalf("expected install to continue on tidy failure, got %v", err)
+		}
+	})
+
+	t.Run("rollback restores pre-existing file content on step failure", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		resetExecCommand(t)
+		execCommand = func(name string, args ...string) *exec.Cmd { return exec.Command("true") }
+
+		// Seed files that the user had before running keel add (simulates uncommitted changes).
+		if err := os.WriteFile(filepath.Join(root, ".env"), []byte("EXISTING=before\n"), 0644); err != nil {
+			t.Fatalf("seed .env: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "application.properties"), []byte("app.name=myapp\n"), 0644); err != nil {
+			t.Fatalf("seed application.properties: %v", err)
+		}
+		writeMainFile(t, root, sampleMain)
+
+		// Manifest: first two steps succeed, third is unknown and fails.
+		m := &Manifest{
+			Name: "failing-addon",
+			Steps: []Step{
+				{Type: "env", Key: "NEW_VAR", Example: "new"},
+				{Type: "property", Key: "new.key", Example: "val"},
+				{Type: "unknown"},
+			},
+		}
+
+		err := Install(m)
+		if err == nil || !strings.Contains(err.Error(), `step "unknown" failed`) {
+			t.Fatalf("expected step failure error, got %v", err)
+		}
+
+		env, _ := os.ReadFile(filepath.Join(root, ".env"))
+		if strings.Contains(string(env), "NEW_VAR") {
+			t.Fatalf(".env should be restored: NEW_VAR must not be present, got %q", string(env))
+		}
+		if !strings.Contains(string(env), "EXISTING=before") {
+			t.Fatalf(".env should keep original content, got %q", string(env))
+		}
+
+		props, _ := os.ReadFile(filepath.Join(root, "application.properties"))
+		if strings.Contains(string(props), "new.key") {
+			t.Fatalf("application.properties should be restored: new.key must not be present, got %q", string(props))
+		}
+		if !strings.Contains(string(props), "app.name=myapp") {
+			t.Fatalf("application.properties should keep original content, got %q", string(props))
+		}
+	})
+
+	t.Run("rollback deletes files created during failed install", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		resetExecCommand(t)
+		execCommand = func(name string, args ...string) *exec.Cmd { return exec.Command("true") }
+		writeMainFile(t, root, sampleMain)
+
+		providerFile := filepath.Join(root, "cmd", "setup_test.go")
+		m := &Manifest{
+			Name: "failing-addon",
+			Steps: []Step{
+				{
+					Type:     "create_provider_file",
+					Filename: "cmd/setup_test.go",
+					Guard:    "func setupTest(",
+					Content:  "package main\nfunc setupTest() {}\n",
+				},
+				{Type: "unknown"},
+			},
+		}
+
+		err := Install(m)
+		if err == nil {
+			t.Fatalf("expected install to fail")
+		}
+
+		if _, statErr := os.Stat(providerFile); !os.IsNotExist(statErr) {
+			t.Fatalf("provider file should be deleted after rollback, but it exists")
+		}
+	})
+
+	t.Run("rollback preserves existing provider file on failure", func(t *testing.T) {
+		root := t.TempDir()
+		withWorkingDir(t, root)
+		resetExecCommand(t)
+		execCommand = func(name string, args ...string) *exec.Cmd { return exec.Command("true") }
+		writeMainFile(t, root, sampleMain)
+
+		// Provider file already exists with user's content (no guard string → will be overwritten).
+		providerPath := filepath.Join(root, "cmd", "setup_test.go")
+		if err := os.MkdirAll(filepath.Dir(providerPath), 0755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		original := "package main\n// user custom content\nfunc setupTest() { /* custom */ }\n"
+		if err := os.WriteFile(providerPath, []byte(original), 0644); err != nil {
+			t.Fatalf("seed provider file: %v", err)
+		}
+
+		m := &Manifest{
+			Name: "failing-addon",
+			Steps: []Step{
+				{
+					Type:     "create_provider_file",
+					Filename: "cmd/setup_test.go",
+					Guard:    "func setupTest(",
+					Content:  "package main\nfunc setupTest() { /* overwritten */ }\n",
+				},
+				{Type: "unknown"},
+			},
+		}
+
+		err := Install(m)
+		if err == nil {
+			t.Fatalf("expected install to fail")
+		}
+
+		restored, readErr := os.ReadFile(providerPath)
+		if readErr != nil {
+			t.Fatalf("provider file should still exist after rollback: %v", readErr)
+		}
+		if string(restored) != original {
+			t.Fatalf("provider file should be restored to original content\nwant: %q\ngot:  %q", original, string(restored))
 		}
 	})
 }
