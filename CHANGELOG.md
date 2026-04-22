@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/slice-soft/keel/compare/v1.16.0...v1.17.0) (2026-04-22)
+
+
+### Features
+
+* implement rollback mechanism for addon installation and enhance keel.toml validation ([#44](https://github.com/slice-soft/keel/issues/44)) ([dbace96](https://github.com/slice-soft/keel/commit/dbace96a65d6d45edccdd2ea440091e32177a709))
+
 ## [1.16.0](https://github.com/slice-soft/keel/compare/v1.15.0...v1.16.0) (2026-04-20)
 
 
