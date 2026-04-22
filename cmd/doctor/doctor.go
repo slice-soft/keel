@@ -66,6 +66,11 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 		checkPlaceholderLegacyEnvVars(kt, string(envData), &hasWarnings)
 	}
 
+	// 4. OAuth-specific: warn when installed but zero providers are configured.
+	if ok {
+		checkOAuthConfiguration(kt, string(envData), &hasWarnings)
+	}
+
 	checkCompileReadiness(&hasErrors)
 
 	printSummary(hasErrors, hasWarnings)
@@ -223,6 +228,50 @@ func checkPlaceholderLegacyEnvVars(kt *keeltoml.KeelToml, dotEnv string, hasWarn
 	}
 }
 
+// checkOAuthConfiguration warns when the oauth addon is installed but no
+// provider has a complete credential pair (client ID + client secret).
+// A project in this state mounts zero OAuth provider routes even though
+// the addon reports as installed.
+func checkOAuthConfiguration(kt *keeltoml.KeelToml, dotEnv string, hasWarnings *bool) {
+	if !addonInstalled(kt, "oauth") {
+		return
+	}
+
+	providers := []string{"GOOGLE", "GITHUB", "GITLAB"}
+	for _, p := range providers {
+		idKey := "OAUTH_" + p + "_CLIENT_ID"
+		secretKey := "OAUTH_" + p + "_CLIENT_SECRET"
+
+		idVal, idInEnv := keeltoml.LookupEnvValue(dotEnv, idKey)
+		secretVal, secretInEnv := keeltoml.LookupEnvValue(dotEnv, secretKey)
+
+		if !idInEnv {
+			idVal, idInEnv = lookupOSEnvFn(idKey)
+		}
+		if !secretInEnv {
+			secretVal, secretInEnv = lookupOSEnvFn(secretKey)
+		}
+
+		if idInEnv && secretInEnv && strings.TrimSpace(idVal) != "" && strings.TrimSpace(secretVal) != "" {
+			return
+		}
+	}
+
+	checkWarn("oauth addon is installed but no provider credentials are configured — " +
+		"set at least one OAUTH_*_CLIENT_ID + OAUTH_*_CLIENT_SECRET pair in .env")
+	*hasWarnings = true
+}
+
+// addonInstalled reports whether an addon with the given id is declared in keel.toml.
+func addonInstalled(kt *keeltoml.KeelToml, id string) bool {
+	for _, a := range kt.Addons {
+		if a.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func checkCompileReadiness(hasErrors *bool) {
 	if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
 		checkWarn("go.mod not found — skipping module readiness checks")
@@ -257,6 +306,7 @@ func checkCompileReadiness(hasErrors *bool) {
 func printSummary(hasErrors, hasWarnings bool) {
 	fmt.Println()
 	fmt.Println(summaryMessage(hasErrors, hasWarnings))
+	fmt.Println("  ℹ  checks are static (keel.toml, go.mod, env vars, go build) — runtime connectivity to databases, Redis, or external services is not verified")
 	fmt.Println()
 }
 

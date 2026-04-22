@@ -139,6 +139,74 @@ func TestCheckPlaceholderLegacyEnvVars_WarnsOnLegacyDefault(t *testing.T) {
 	}
 }
 
+func TestCheckOAuthConfiguration_WarnsWhenNoProviderConfigured(t *testing.T) {
+	resetDoctorDeps(t)
+
+	kt := &keeltoml.KeelToml{
+		Addons: []keeltoml.AddonEntry{{ID: "oauth"}},
+	}
+	dotEnv := "OAUTH_GOOGLE_CLIENT_ID=\nOAUTH_GOOGLE_CLIENT_SECRET=\n"
+
+	hasWarnings := false
+	checkOAuthConfiguration(kt, dotEnv, &hasWarnings)
+	if !hasWarnings {
+		t.Fatal("expected warning when oauth installed but no provider credentials set")
+	}
+}
+
+func TestCheckOAuthConfiguration_NoWarnWhenProviderConfigured(t *testing.T) {
+	resetDoctorDeps(t)
+
+	kt := &keeltoml.KeelToml{
+		Addons: []keeltoml.AddonEntry{{ID: "oauth"}},
+	}
+	dotEnv := "OAUTH_GOOGLE_CLIENT_ID=real-id\nOAUTH_GOOGLE_CLIENT_SECRET=real-secret\n"
+
+	hasWarnings := false
+	checkOAuthConfiguration(kt, dotEnv, &hasWarnings)
+	if hasWarnings {
+		t.Fatal("expected no warning when at least one provider is fully configured")
+	}
+}
+
+func TestCheckOAuthConfiguration_NoWarnWhenOAuthNotInstalled(t *testing.T) {
+	resetDoctorDeps(t)
+
+	kt := &keeltoml.KeelToml{
+		Addons: []keeltoml.AddonEntry{{ID: "jwt"}},
+	}
+
+	hasWarnings := false
+	checkOAuthConfiguration(kt, "", &hasWarnings)
+	if hasWarnings {
+		t.Fatal("expected no warning when oauth addon is not installed")
+	}
+}
+
+func TestCheckOAuthConfiguration_NoWarnWhenProviderInOSEnv(t *testing.T) {
+	resetDoctorDeps(t)
+
+	lookupOSEnvFn = func(key string) (string, bool) {
+		switch key {
+		case "OAUTH_GITHUB_CLIENT_ID":
+			return "gh-id", true
+		case "OAUTH_GITHUB_CLIENT_SECRET":
+			return "gh-secret", true
+		}
+		return "", false
+	}
+
+	kt := &keeltoml.KeelToml{
+		Addons: []keeltoml.AddonEntry{{ID: "oauth"}},
+	}
+
+	hasWarnings := false
+	checkOAuthConfiguration(kt, "", &hasWarnings)
+	if hasWarnings {
+		t.Fatal("expected no warning when provider credentials are set via OS env")
+	}
+}
+
 func TestSummaryMessage(t *testing.T) {
 	if got := summaryMessage(false, false); got != "  ✓  project looks healthy" {
 		t.Fatalf("unexpected healthy summary: %q", got)

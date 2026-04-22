@@ -120,19 +120,85 @@ func runStep(s Step, addonName string) error {
 	}
 }
 
-// stepGoGet runs: go get <package>
+// stepGoGet runs: go get <package> and prints a summary of go.mod changes.
 func stepGoGet(s Step) error {
 	pkg := strings.TrimSpace(s.Package)
 	if pkg == "" {
 		return fmt.Errorf("go_get step is missing 'package'")
 	}
 
+	before, _ := os.ReadFile("go.mod")
+
 	target := resolveGoGetTarget(pkg)
 	fmt.Printf("  → go get %s\n", target)
 	cmd := execCommand("go", "get", target)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	printGoModChurnSummary(before)
+	return nil
+}
+
+// printGoModChurnSummary compares the go.mod snapshot taken before go get
+// against the current go.mod and prints a short summary when the go directive
+// or indirect dependency count changed.
+func printGoModChurnSummary(before []byte) {
+	after, err := os.ReadFile("go.mod")
+	if err != nil || string(before) == string(after) {
+		return
+	}
+
+	oldDirective := extractGoDirective(string(before))
+	newDirective := extractGoDirective(string(after))
+	if oldDirective != "" && newDirective != "" && oldDirective != newDirective {
+		fmt.Printf("  ℹ  go directive updated: %s → %s\n", oldDirective, newDirective)
+	}
+
+	added := countNewIndirectDeps(string(before), string(after))
+	if added > 0 {
+		fmt.Printf("  ℹ  %d indirect dependenc%s added to go.mod\n", added, pluralSuffix(added, "y", "ies"))
+	}
+}
+
+func extractGoDirective(goMod string) string {
+	for line := range strings.SplitSeq(goMod, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if rest, ok := strings.CutPrefix(trimmed, "go "); ok {
+			return strings.TrimSpace(rest)
+		}
+	}
+	return ""
+}
+
+func countNewIndirectDeps(before, after string) int {
+	beforeLines := indirectDepSet(before)
+	count := 0
+	for line := range strings.SplitSeq(after, "\n") {
+		if strings.Contains(line, "// indirect") && !beforeLines[strings.TrimSpace(line)] {
+			count++
+		}
+	}
+	return count
+}
+
+func indirectDepSet(goMod string) map[string]bool {
+	set := make(map[string]bool)
+	for line := range strings.SplitSeq(goMod, "\n") {
+		if strings.Contains(line, "// indirect") {
+			set[strings.TrimSpace(line)] = true
+		}
+	}
+	return set
+}
+
+func pluralSuffix(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
 }
 
 func resolveGoGetTarget(pkg string) string {
