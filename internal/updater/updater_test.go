@@ -46,6 +46,10 @@ func resetUpgradeDeps(t *testing.T) {
 	previousExecutablePath := executablePathFn
 	previousEvalSymlinks := evalSymlinksFn
 	previousRemoveFile := removeFileFn
+	previousUserHomeDir := userHomeDirFn
+	previousGetenv := getenvFn
+	previousReadBuildInfo := readBuildInfoFn
+	previousRunUpdateCommand := runUpdateCommandFn
 	t.Cleanup(func() {
 		fetchLatestReleaseFn = previousFetchLatestRelease
 		downloadBinaryFn = previousDownloadBinary
@@ -53,6 +57,10 @@ func resetUpgradeDeps(t *testing.T) {
 		executablePathFn = previousExecutablePath
 		evalSymlinksFn = previousEvalSymlinks
 		removeFileFn = previousRemoveFile
+		userHomeDirFn = previousUserHomeDir
+		getenvFn = previousGetenv
+		readBuildInfoFn = previousReadBuildInfo
+		runUpdateCommandFn = previousRunUpdateCommand
 	})
 }
 
@@ -308,8 +316,15 @@ func TestCheckAndNotify(t *testing.T) {
 	})
 
 	t.Run("notifies when a new version exists", func(t *testing.T) {
+		resetUpgradeDeps(t)
 		home := t.TempDir()
 		t.Setenv("HOME", home)
+		executablePathFn = func() (string, error) {
+			return "/opt/homebrew/bin/keel", nil
+		}
+		evalSymlinksFn = func(path string) (string, error) {
+			return "/opt/homebrew/Cellar/keel/1.0.0/bin/keel", nil
+		}
 		stubHTTPTransport(t, func(req *http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: http.StatusOK,
@@ -321,6 +336,9 @@ func TestCheckAndNotify(t *testing.T) {
 		msg := readUpdateMessage(t, CheckAndNotify("v1.0.0"))
 		if !strings.Contains(msg, "New version available: v9.9.9") {
 			t.Fatalf("expected update message, got %q", msg)
+		}
+		if !strings.Contains(msg, "Update with: brew upgrade slice-soft/tap/keel") {
+			t.Fatalf("expected Homebrew update command, got %q", msg)
 		}
 		if _, err := os.Stat(filepath.Join(home, ".keel", "last_check")); err != nil {
 			t.Fatalf("expected saveLastCheck to write last_check: %v", err)
@@ -346,192 +364,101 @@ func TestCheckAndNotify(t *testing.T) {
 }
 
 func TestUpgrade(t *testing.T) {
-	t.Run("already latest version", func(t *testing.T) {
+	t.Run("runs external command for Homebrew installs", func(t *testing.T) {
 		resetUpgradeDeps(t)
-		stubHTTPTransport(t, func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader(`{"tag_name":"v1.0.0","assets":[]}`)),
-				Header:     make(http.Header),
-			}, nil
-		})
+		executablePathFn = func() (string, error) {
+			return "/opt/homebrew/bin/keel", nil
+		}
+		evalSymlinksFn = func(path string) (string, error) {
+			return "/opt/homebrew/Cellar/keel/1.0.0/bin/keel", nil
+		}
+		var ranCommand string
+		runUpdateCommandFn = func(command string) error {
+			ranCommand = command
+			return nil
+		}
 
 		if err := Upgrade("v1.0.0"); err != nil {
 			t.Fatalf("expected nil error, got %v", err)
 		}
-	})
-
-	t.Run("returns error when binary asset is missing", func(t *testing.T) {
-		resetUpgradeDeps(t)
-		stubHTTPTransport(t, func(req *http.Request) (*http.Response, error) {
-			body := `{"tag_name":"v2.0.0","assets":[{"name":"keel_other_asset","browser_download_url":"https://example.com/other"}]}`
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader(body)),
-				Header:     make(http.Header),
-			}, nil
-		})
-
-		err := Upgrade("v1.0.0")
-		if err == nil || !strings.Contains(err.Error(), "no binary found") {
-			t.Fatalf("expected missing binary error, got %v", err)
+		if ranCommand != HomebrewUpdateCommand {
+			t.Fatalf("expected Homebrew update command, got %q", ranCommand)
 		}
 	})
 
-	t.Run("returns error when release lookup fails", func(t *testing.T) {
+	t.Run("runs external command for go install", func(t *testing.T) {
 		resetUpgradeDeps(t)
-		fetchLatestReleaseFn = func() (*Release, error) {
-			return nil, errors.New("api down")
-		}
-
-		err := Upgrade("v1.0.0")
-		if err == nil || !strings.Contains(err.Error(), "error querying GitHub") {
-			t.Fatalf("expected query error, got %v", err)
-		}
-	})
-
-	t.Run("returns error when download fails", func(t *testing.T) {
-		resetUpgradeDeps(t)
-		fetchLatestReleaseFn = func() (*Release, error) {
-			return &Release{
-				TagName: "v2.0.0",
-				Assets: []Asset{
-					{Name: buildAssetName(), BrowserDownloadURL: "https://example.com/keel"},
-				},
-			}, nil
-		}
-		downloadBinaryFn = func(url string) (string, error) {
-			return "", errors.New("download failed")
-		}
-
-		err := Upgrade("v1.0.0")
-		if err == nil || !strings.Contains(err.Error(), "error downloading binary") {
-			t.Fatalf("expected download error, got %v", err)
-		}
-	})
-
-	t.Run("returns error when executable path cannot be resolved", func(t *testing.T) {
-		resetUpgradeDeps(t)
-		fetchLatestReleaseFn = func() (*Release, error) {
-			return &Release{
-				TagName: "v2.0.0",
-				Assets: []Asset{
-					{Name: buildAssetName(), BrowserDownloadURL: "https://example.com/keel"},
-				},
-			}, nil
-		}
-		downloadBinaryFn = func(url string) (string, error) {
-			tmp := filepath.Join(t.TempDir(), "keel-download")
-			if err := os.WriteFile(tmp, []byte("binary"), 0644); err != nil {
-				t.Fatalf("failed writing temp download: %v", err)
+		binDir := t.TempDir()
+		getenvFn = func(key string) string {
+			if key == "GOBIN" {
+				return binDir
 			}
-			return tmp, nil
+			return ""
 		}
 		executablePathFn = func() (string, error) {
-			return "", errors.New("executable missing")
-		}
-		removeFileFn = func(path string) error { return nil }
-
-		err := Upgrade("v1.0.0")
-		if err == nil || !strings.Contains(err.Error(), "error resolving executable path") {
-			t.Fatalf("expected executable path error, got %v", err)
-		}
-	})
-
-	t.Run("returns error when replace binary fails", func(t *testing.T) {
-		resetUpgradeDeps(t)
-		fetchLatestReleaseFn = func() (*Release, error) {
-			return &Release{
-				TagName: "v2.0.0",
-				Assets: []Asset{
-					{Name: buildAssetName(), BrowserDownloadURL: "https://example.com/keel"},
-				},
-			}, nil
-		}
-		downloadBinaryFn = func(url string) (string, error) {
-			tmp := filepath.Join(t.TempDir(), "keel-download")
-			if err := os.WriteFile(tmp, []byte("binary"), 0644); err != nil {
-				t.Fatalf("failed writing temp download: %v", err)
-			}
-			return tmp, nil
-		}
-		executablePathFn = func() (string, error) {
-			return "/tmp/keel", nil
+			return filepath.Join(binDir, keelExecutableName()), nil
 		}
 		evalSymlinksFn = func(path string) (string, error) {
 			return path, nil
 		}
-		replaceBinaryFn = func(newBinary, targetPath string) error {
-			return errors.New("replace failed")
-		}
-		removeFileFn = func(path string) error { return nil }
-
-		err := Upgrade("v1.0.0")
-		if err == nil || !strings.Contains(err.Error(), "error installing") {
-			t.Fatalf("expected install error, got %v", err)
-		}
-	})
-
-	t.Run("successfully installs new binary", func(t *testing.T) {
-		resetUpgradeDeps(t)
-
-		targetPath := filepath.Join(t.TempDir(), "keel")
-		if err := os.WriteFile(targetPath, []byte("old"), 0755); err != nil {
-			t.Fatalf("failed writing target binary: %v", err)
-		}
-
-		fetchLatestReleaseFn = func() (*Release, error) {
-			return &Release{
-				TagName: "v2.0.0",
-				Assets: []Asset{
-					{Name: buildAssetName(), BrowserDownloadURL: "https://example.com/keel"},
-				},
-			}, nil
-		}
-
-		downloadedPath := filepath.Join(t.TempDir(), "keel-download")
-		if err := os.WriteFile(downloadedPath, []byte("new"), 0644); err != nil {
-			t.Fatalf("failed writing downloaded file: %v", err)
-		}
-		downloadBinaryFn = func(url string) (string, error) {
-			return downloadedPath, nil
-		}
-		executablePathFn = func() (string, error) {
-			return targetPath, nil
-		}
-		evalSymlinksFn = func(path string) (string, error) {
-			return path, nil
-		}
-
-		replaceCalled := false
-		replaceBinaryFn = func(newBinary, path string) error {
-			replaceCalled = true
-			if newBinary != downloadedPath {
-				t.Fatalf("unexpected downloaded binary path: %q", newBinary)
-			}
-			if path != targetPath {
-				t.Fatalf("unexpected target path: %q", path)
-			}
-			return nil
-		}
-
-		removeCalled := false
-		removeFileFn = func(path string) error {
-			removeCalled = true
-			if path != downloadedPath {
-				t.Fatalf("unexpected cleanup path: %q", path)
-			}
+		var ranCommand string
+		runUpdateCommandFn = func(command string) error {
+			ranCommand = command
 			return nil
 		}
 
 		if err := Upgrade("v1.0.0"); err != nil {
-			t.Fatalf("expected successful upgrade, got %v", err)
+			t.Fatalf("expected nil error, got %v", err)
 		}
-		if !replaceCalled {
-			t.Fatalf("expected replaceBinary to be called")
+		if ranCommand != GoInstallUpdateCommand {
+			t.Fatalf("expected go install update command, got %q", ranCommand)
 		}
-		if !removeCalled {
-			t.Fatalf("expected temporary file cleanup")
+	})
+
+	t.Run("returns error when external command fails", func(t *testing.T) {
+		resetUpgradeDeps(t)
+		binDir := t.TempDir()
+		getenvFn = func(key string) string {
+			if key == "GOBIN" {
+				return binDir
+			}
+			return ""
+		}
+		executablePathFn = func() (string, error) {
+			return filepath.Join(binDir, keelExecutableName()), nil
+		}
+		evalSymlinksFn = func(path string) (string, error) {
+			return path, nil
+		}
+		runUpdateCommandFn = func(command string) error {
+			return errors.New("command failed")
+		}
+
+		err := Upgrade("v1.0.0")
+		if err == nil || !strings.Contains(err.Error(), "error running") {
+			t.Fatalf("expected command error, got %v", err)
+		}
+	})
+
+	t.Run("prints manual update message for unknown installs", func(t *testing.T) {
+		resetUpgradeDeps(t)
+		fetchLatestReleaseFn = func() (*Release, error) {
+			t.Fatal("unknown installs must not query GitHub releases")
+			return nil, nil
+		}
+		runUpdateCommandFn = func(command string) error {
+			t.Fatal("unknown installs must not run update commands")
+			return nil
+		}
+		executablePathFn = func() (string, error) {
+			return filepath.Join(t.TempDir(), keelExecutableName()), nil
+		}
+		evalSymlinksFn = func(path string) (string, error) {
+			return path, nil
+		}
+
+		if err := Upgrade("v1.0.0"); err != nil {
+			t.Fatalf("expected nil error, got %v", err)
 		}
 	})
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/slice-soft/keel/cmd/new"
 	"github.com/slice-soft/keel/cmd/run"
 	telemetrycmd "github.com/slice-soft/keel/cmd/telemetry"
+	upgradecmd "github.com/slice-soft/keel/cmd/upgrade"
 	"github.com/slice-soft/keel/internal/telemetry"
 	"github.com/slice-soft/keel/internal/updater"
 	"github.com/spf13/cobra"
@@ -33,7 +34,11 @@ var rootCmd = &cobra.Command{
 	Short: "⚓ Keel CLI — Opinionated Go framework by slice-soft",
 
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		updateCh = updater.CheckAndNotify(version)
+		if cmd.Name() == "upgrade" {
+			updateCh = nil
+		} else {
+			updateCh = updater.CheckAndNotify(version)
+		}
 		telemetry.Send(cmd.Name(), version)
 	},
 
@@ -69,6 +74,8 @@ func init() {
 	rootCmd.AddCommand(doctor.NewCommand())
 	rootCmd.AddCommand(envCmd.NewCommand())
 	rootCmd.AddCommand(telemetrycmd.NewCommand())
+	rootCmd.AddCommand(upgradecmd.NewCommand(func() string { return version }))
+	rootCmd.AddCommand(newVersionCommand())
 }
 
 func syncRootVersionOutput() {
