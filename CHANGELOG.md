@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/slice-soft/keel/compare/v1.18.0...v1.19.0) (2026-05-06)
+
+
+### Features
+
+* implement upgrade command for Keel CLI with installation detection and update instructions ([#49](https://github.com/slice-soft/keel/issues/49)) ([e35ca5d](https://github.com/slice-soft/keel/commit/e35ca5dec3e744fa40c8526c431fd05fe42679f2))
+
 ## [1.18.0](https://github.com/slice-soft/keel/compare/v1.17.0...v1.18.0) (2026-04-22)
 
 
