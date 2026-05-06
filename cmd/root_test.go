@@ -67,3 +67,15 @@ func TestExecuteErrorPath(t *testing.T) {
 		t.Fatalf("expected error output to include unknown command, got %q", stderr.String())
 	}
 }
+
+func TestRootRegistersUpdateRelatedCommands(t *testing.T) {
+	for _, name := range []string{"upgrade", "version"} {
+		found, _, err := rootCmd.Find([]string{name})
+		if err != nil {
+			t.Fatalf("expected to find %q command, got error %v", name, err)
+		}
+		if found == nil || found.Name() != name {
+			t.Fatalf("expected to find %q command, got %#v", name, found)
+		}
+	}
+}

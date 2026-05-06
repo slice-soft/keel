@@ -97,7 +97,10 @@ keel run
 
 ### `keel upgrade`
 
-Upgrade Keel CLI to the latest version:
+Update Keel CLI using the correct path for your installation. If your binary is
+managed by Homebrew or `go install`, Keel runs the correct package-manager
+command. If the installation source cannot be detected, Keel asks you to update
+manually:
 
 ```bash
 keel upgrade

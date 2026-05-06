@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -24,6 +25,7 @@ var replaceBinaryFn = replaceBinary
 var executablePathFn = os.Executable
 var evalSymlinksFn = filepath.EvalSymlinks
 var removeFileFn = os.Remove
+var runUpdateCommandFn = runUpdateCommand
 
 // Release represents the GitHub API release response.
 type Release struct {
@@ -59,9 +61,10 @@ func CheckAndNotify(currentVersion string) chan string {
 		saveLastCheck()
 
 		if isNewer(latest, currentVersion) {
+			install := DetectInstallation()
 			ch <- fmt.Sprintf(
-				"\n  💡 New version available: %s (you have %s)\n     Update with: keel upgrade\n",
-				latest, currentVersion,
+				"\n  💡 New version available: %s (you have %s)\n     %s\n",
+				latest, currentVersion, install.UpdateNotice(),
 			)
 		} else {
 			ch <- ""
@@ -71,8 +74,25 @@ func CheckAndNotify(currentVersion string) chan string {
 	return ch
 }
 
-// Upgrade downloads and installs the latest binary from GitHub Releases.
+// Upgrade runs the supported update command for the detected installation.
 func Upgrade(currentVersion string) error {
+	install := DetectInstallation()
+	if install.UpdateCommand != "" {
+		fmt.Printf("\n⚓  Keel CLI is managed by %s.\n", install.Source)
+		fmt.Printf("  Running: %s\n\n", install.UpdateCommand)
+		if err := runUpdateCommandFn(install.UpdateCommand); err != nil {
+			return fmt.Errorf("error running %q: %w", install.UpdateCommand, err)
+		}
+		fmt.Print("\n  ✅ Keel update command completed\n\n")
+		return nil
+	}
+
+	if install.Source == SourceUnknown {
+		fmt.Println("\n⚓  Keel CLI installation source could not be detected.")
+		fmt.Printf("  %s\n\n", ManualUpdateInstruction)
+		return nil
+	}
+
 	fmt.Println("\n⚓  Checking latest version...")
 
 	release, err := fetchLatestReleaseFn()
@@ -122,6 +142,19 @@ func Upgrade(currentVersion string) error {
 
 	fmt.Printf("\n  ✅ keel updated to %s\n\n", release.TagName)
 	return nil
+}
+
+func runUpdateCommand(command string) error {
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return fmt.Errorf("empty update command")
+	}
+
+	cmd := exec.Command(parts[0], parts[1:]...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func fetchLatestVersion() (string, error) {

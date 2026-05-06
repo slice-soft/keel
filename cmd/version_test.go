@@ -1,13 +1,19 @@
 package cmd
 
 import (
+	"bytes"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/slice-soft/keel/internal/updater"
 )
 
 func TestRenderVersionOutputIncludesMetadata(t *testing.T) {
-	output := renderVersionOutput("1.2.3", "abc1234", "2026-03-05T12:00:00Z")
+	output := renderVersionOutputWithInstallation("1.2.3", "abc1234", "2026-03-05T12:00:00Z", updater.Installation{
+		Source:        updater.SourceGoInstall,
+		UpdateCommand: updater.GoInstallUpdateCommand,
+	})
 
 	requiredFragments := []string{
 		"keel-cli: 1.2.3",
@@ -15,6 +21,8 @@ func TestRenderVersionOutputIncludesMetadata(t *testing.T) {
 		"build date: 2026-03-05T12:00:00Z",
 		"go: " + runtime.Version(),
 		"operating system: " + runtime.GOOS + "/" + runtime.GOARCH,
+		"installation: go install",
+		"update command: go install github.com/slice-soft/keel@latest",
 		"framework: Keel Framework (https://keel-go.dev)",
 		"repository: Keel CLI Repository (https://github.com/slice-soft/keel)",
 	}
@@ -52,6 +60,35 @@ func TestSyncRootVersionOutputUsesSharedRenderer(t *testing.T) {
 	}
 	if rootCmd.Long != want {
 		t.Fatalf("expected root long help header to match renderer")
+	}
+}
+
+func TestVersionCommandPrintsRenderedOutput(t *testing.T) {
+	previousVersion := version
+	previousCommit := commit
+	previousBuildDate := buildDate
+	t.Cleanup(func() {
+		version = previousVersion
+		commit = previousCommit
+		buildDate = previousBuildDate
+	})
+
+	version = "v1.2.3"
+	commit = "abc1234"
+	buildDate = "2026-03-05T12:00:00Z"
+
+	cmd := newVersionCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if !strings.Contains(out.String(), "keel-cli: v1.2.3") {
+		t.Fatalf("expected version output, got %q", out.String())
+	}
+	if !strings.Contains(out.String(), "update:") && !strings.Contains(out.String(), "update command:") {
+		t.Fatalf("expected update details in version output, got %q", out.String())
 	}
 }
 
