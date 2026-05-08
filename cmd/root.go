@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/slice-soft/keel/cmd/add"
+	addoncmd "github.com/slice-soft/keel/cmd/addon"
 	"github.com/slice-soft/keel/cmd/completion"
 	"github.com/slice-soft/keel/cmd/doctor"
 	envCmd "github.com/slice-soft/keel/cmd/env"
@@ -66,6 +67,7 @@ func Execute() {
 func init() {
 	syncRootVersionOutput()
 	rootCmd.AddCommand(add.NewCommand())
+	rootCmd.AddCommand(addoncmd.NewCommand())
 	rootCmd.AddCommand(new.NewCommand())
 	rootCmd.AddCommand(initcmd.NewCommand())
 	rootCmd.AddCommand(generate.NewCommand())
