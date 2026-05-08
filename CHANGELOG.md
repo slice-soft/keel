@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/slice-soft/keel/compare/v1.19.0...v1.20.0) (2026-05-08)
+
+
+### Features
+
+* add addon management commands for Keel CLI ([#51](https://github.com/slice-soft/keel/issues/51)) ([4ea45be](https://github.com/slice-soft/keel/commit/4ea45be53a427cac0c783ff8030d0a3e7997b08e))
+
 ## [1.19.0](https://github.com/slice-soft/keel/compare/v1.18.0...v1.19.0) (2026-05-06)
 
 
