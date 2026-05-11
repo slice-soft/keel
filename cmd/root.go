@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/slice-soft/keel/cmd/add"
 	addoncmd "github.com/slice-soft/keel/cmd/addon"
@@ -72,6 +73,20 @@ func init() {
 	rootCmd.AddCommand(initcmd.NewCommand())
 	rootCmd.AddCommand(generate.NewCommand())
 	rootCmd.AddCommand(completion.NewCommand(rootCmd))
+
+	run.SetUpdateGetter(func() string {
+		if updateCh == nil {
+			return ""
+		}
+		ch := updateCh
+		updateCh = nil // consumed here; PersistentPostRun will skip
+		select {
+		case msg := <-ch:
+			return msg
+		case <-time.After(500 * time.Millisecond):
+			return ""
+		}
+	})
 	rootCmd.AddCommand(run.NewCommand())
 	rootCmd.AddCommand(doctor.NewCommand())
 	rootCmd.AddCommand(envCmd.NewCommand())

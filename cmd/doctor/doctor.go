@@ -6,9 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/slice-soft/keel/internal/appproperties"
 	"github.com/slice-soft/keel/internal/keeltoml"
+	"github.com/slice-soft/keel/internal/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -50,9 +53,12 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	appDoc, hasAppProperties := checkApplicationProperties(&hasErrors)
 
 	// 2. Addons declared in keel.toml are installed in go.mod.
+	var goModContent string
 	if ok {
 		goModData, _ := readGoModFn()
-		checkAddonsInGoMod(kt, string(goModData), &hasErrors)
+		goModContent = string(goModData)
+		checkAddonsInGoMod(kt, goModContent, &hasErrors)
+		checkAddonVersions(kt, goModContent, &hasWarnings)
 	}
 
 	// 3. Required env vars are set.
@@ -140,6 +146,79 @@ func addonNeedle(addon keeltoml.AddonEntry) string {
 	}
 	// Heuristic: most official Keel addons are named ss-keel-<id>.
 	return "ss-keel-" + addon.ID
+}
+
+// checkAddonVersions checks whether installed ss-keel-* addons are up to date.
+// Runs each GitHub check in parallel; skips non-official or uninstalled addons.
+func checkAddonVersions(kt *keeltoml.KeelToml, goModContent string, hasWarnings *bool) {
+	if len(kt.Addons) == 0 {
+		return
+	}
+
+	type candidate struct {
+		displayID string
+		addonID   string
+		current   string
+	}
+
+	var candidates []candidate
+	for _, addon := range kt.Addons {
+		modulePath := addon.Repo
+		if modulePath == "" {
+			modulePath = "github.com/slice-soft/ss-keel-" + addon.ID
+		}
+		if !strings.HasPrefix(modulePath, "github.com/slice-soft/ss-keel-") {
+			continue
+		}
+		current, ok := updater.ParseModuleVersion(goModContent, modulePath)
+		if !ok {
+			continue
+		}
+		addonID := strings.TrimPrefix(modulePath, "github.com/slice-soft/ss-keel-")
+		candidates = append(candidates, candidate{displayID: addon.ID, addonID: addonID, current: current})
+	}
+
+	if len(candidates) == 0 {
+		return
+	}
+
+	type result struct {
+		displayID string
+		current   string
+		latest    string
+		err       error
+	}
+
+	results := make(chan result, len(candidates))
+	var wg sync.WaitGroup
+	for _, c := range candidates {
+		wg.Add(1)
+		go func(c candidate) {
+			defer wg.Done()
+			latest, err := updater.FetchAddonLatestVersion(c.addonID)
+			results <- result{displayID: c.displayID, current: c.current, latest: latest, err: err}
+		}(c)
+	}
+	go func() { wg.Wait(); close(results) }()
+
+	deadline := time.After(8 * time.Second)
+	for range candidates {
+		select {
+		case r := <-results:
+			if r.err != nil {
+				continue
+			}
+			if updater.IsNewer(r.latest, r.current) {
+				checkWarn(fmt.Sprintf("addon %q is outdated: %s → %s", r.displayID, r.current, r.latest))
+				*hasWarnings = true
+			} else {
+				checkOk(fmt.Sprintf("addon %q is up to date (%s)", r.displayID, r.current))
+			}
+		case <-deadline:
+			checkWarn("addon version check timed out — skipping remaining")
+			return
+		}
+	}
 }
 
 // checkRequiredEnvVars verifies that each required [[env]] entry has a value.

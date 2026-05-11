@@ -63,7 +63,7 @@ func CheckAndNotify(currentVersion string) chan string {
 		if isNewer(latest, currentVersion) {
 			install := DetectInstallation()
 			ch <- fmt.Sprintf(
-				"\n  💡 New version available: %s (you have %s)\n     %s\n",
+				"\n  ─────────────────────────────────────────────────────\n  ⚓  New version available: %s  (you have %s)\n     %s\n  ─────────────────────────────────────────────────────\n",
 				latest, currentVersion, install.UpdateNotice(),
 			)
 		} else {
