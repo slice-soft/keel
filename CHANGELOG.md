@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/slice-soft/keel/compare/v1.20.0...v1.21.0) (2026-05-11)
+
+
+### Features
+
+* implement addon version checks and update notifications in CLI ([115f5fd](https://github.com/slice-soft/keel/commit/115f5fd0e59c5c627701657bf76c0383eb5fc40b))
+
 ## [1.20.0](https://github.com/slice-soft/keel/compare/v1.19.0...v1.20.0) (2026-05-08)
 
 
