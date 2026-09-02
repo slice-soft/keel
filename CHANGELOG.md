@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.0](https://github.com/slice-soft/keel/compare/v1.22.0...v1.23.0) (2026-09-02)
+
+
+### Features
+
+* doctor reports when the addon version check could not run ([#59](https://github.com/slice-soft/keel/issues/59)) ([9d9ba42](https://github.com/slice-soft/keel/commit/9d9ba42ac69a2602825672dc97dbbacd9a4e19b9))
+
 ## [1.22.0](https://github.com/slice-soft/keel/compare/v1.21.0...v1.22.0) (2026-09-02)
 
 
