@@ -76,6 +76,21 @@ type genFile struct {
 	data     generator.Data
 }
 
+// printSchemaNote tells the developer what to do with the generated DDL. Keel
+// does not run migrations, so the table does not exist until this is applied —
+// without it every endpoint of the new module answers 500.
+func printSchemaNote(moduleName string) {
+	table := generator.NewData(moduleName).TableName
+	fmt.Printf("  ℹ  Base schema written to %s\n", SchemaPathFor(table))
+	fmt.Println()
+	fmt.Println("     Keel does not run migrations — apply it before starting the app:")
+	fmt.Printf("       sqlite3 ./app.db < %s          # sqlite\n", SchemaPathFor(table))
+	fmt.Printf("       psql \"$DATABASE_URL\" -f %s   # postgres\n", SchemaPathFor(table))
+	fmt.Println()
+	fmt.Println("     `keel doctor` fails while a GORM module has no schema file.")
+	fmt.Println()
+}
+
 func logCreated(path string) {
 	fmt.Printf("  + created %s\n", path)
 }
@@ -134,6 +149,9 @@ func execute(genType, rawName string, opts Options) error {
 		}
 		fmt.Println("  ✓  go mod tidy")
 		fmt.Printf("  ✓  module %q generated successfully\n", parsed.componentName)
+		if repositoryChoice == repositoryBackendGorm {
+			printSchemaNote(parsed.componentName)
+		}
 		return nil
 	}
 
@@ -227,8 +245,9 @@ func buildRepositoryFiles(componentName, baseDir, packageOverride string, reposi
 	if packageOverride != "" {
 		data.PackageName = generator.NewData(packageOverride).PackageName
 	}
+	data.SQL = generator.DialectFor(resolveDBEngine())
 
-	files := make([]genFile, 0, 3)
+	files := make([]genFile, 0, 4)
 	entityDest := filepath.Join(baseDir, data.SnakeName+"_entity.go")
 	if !generator.FileExists(entityDest) {
 		files = append(files, genFile{
@@ -236,6 +255,11 @@ func buildRepositoryFiles(componentName, baseDir, packageOverride string, reposi
 			dest:     entityDest,
 			data:     data,
 		})
+		// The generated entity pins its table to db/schema/<table>.sql, so the
+		// DDL ships with it.
+		if repositoryChoice == repositoryBackendGorm {
+			files = append(files, gormSchemaFile(data))
+		}
 	}
 
 	return append(files, repositoryFilesForBackend(componentName, baseDir, packageOverride, repositoryChoice)...)

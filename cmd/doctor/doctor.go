@@ -25,7 +25,11 @@ func NewCommand() *cobra.Command {
   ✗  error — must fix
   ⚠  warning — should fix`,
 		Args: cobra.NoArgs,
-		RunE: runDoctor,
+		// A failing diagnosis is never a usage error, so print the finding
+		// alone: Execute() already reports it on stderr and exits 1.
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE:          runDoctor,
 	}
 }
 
@@ -48,9 +52,18 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	hasErrors := false
 	hasWarnings := false
 
+	// 0. Refuse to grade a directory that holds no project at all. Without this
+	// a wrong working directory or a broken checkout passes CI in green.
+	if !isKeelProjectDir() {
+		checkErr("no Keel project here — no keel.toml and no go.mod found")
+		fmt.Println("       Start one with: keel new <name>   ·   adopt an existing Go project with: keel init")
+		printSummary(true, false)
+		return summaryErr(true)
+	}
+
 	// 1. keel.toml — valid and parseable.
-	kt, ok := checkKeelToml(&hasErrors)
-	appDoc, hasAppProperties := checkApplicationProperties(&hasErrors)
+	kt, ok := checkKeelToml(&hasErrors, &hasWarnings)
+	appDoc, hasAppProperties := checkApplicationProperties(&hasErrors, &hasWarnings)
 
 	// 2. Addons declared in keel.toml are installed in go.mod.
 	var goModContent string
@@ -77,18 +90,34 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 		checkOAuthConfiguration(kt, string(envData), &hasWarnings)
 	}
 
-	checkCompileReadiness(&hasErrors)
+	// 5. GORM-backed modules must ship the DDL that provisions their table.
+	checkGormSchemas(&hasErrors)
+
+	checkCompileReadiness(&hasErrors, &hasWarnings)
 
 	printSummary(hasErrors, hasWarnings)
 	return summaryErr(hasErrors)
 }
 
+// isKeelProjectDir reports whether the working directory holds something worth
+// diagnosing. A Go project without keel.toml is still one (that is the `keel
+// init` path, reported as a warning); neither file means there is no project.
+func isKeelProjectDir() bool {
+	if _, err := os.Stat(keeltoml.DefaultPath); err == nil {
+		return true
+	}
+	_, err := os.Stat("go.mod")
+	return err == nil
+}
+
 // checkKeelToml validates that keel.toml exists and is parseable.
 // Returns the parsed doc (nil on failure) and whether the check passed.
-func checkKeelToml(hasErrors *bool) (*keeltoml.KeelToml, bool) {
+func checkKeelToml(hasErrors *bool, hasWarnings *bool) (*keeltoml.KeelToml, bool) {
 	if _, err := os.Stat(keeltoml.DefaultPath); os.IsNotExist(err) {
 		checkWarn("keel.toml not found — run: keel init")
-		// Not a hard error; addons/env checks are skipped.
+		// Not a hard error; addons/env checks are skipped. It is still a
+		// warning, so the summary must not report a clean project.
+		*hasWarnings = true
 		return nil, false
 	}
 
@@ -104,9 +133,10 @@ func checkKeelToml(hasErrors *bool) (*keeltoml.KeelToml, bool) {
 }
 
 // checkApplicationProperties validates that application.properties exists and is parseable.
-func checkApplicationProperties(hasErrors *bool) (*appproperties.Document, bool) {
+func checkApplicationProperties(hasErrors *bool, hasWarnings *bool) (*appproperties.Document, bool) {
 	if _, err := os.Stat(appproperties.DefaultPath); os.IsNotExist(err) {
 		checkWarn("application.properties not found — generate it for the new runtime config contract")
+		*hasWarnings = true
 		return nil, false
 	}
 
@@ -351,9 +381,10 @@ func addonInstalled(kt *keeltoml.KeelToml, id string) bool {
 	return false
 }
 
-func checkCompileReadiness(hasErrors *bool) {
+func checkCompileReadiness(hasErrors *bool, hasWarnings *bool) {
 	if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
 		checkWarn("go.mod not found — skipping module readiness checks")
+		*hasWarnings = true
 		return
 	}
 
