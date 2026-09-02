@@ -18,6 +18,9 @@ type Data struct {
 	KebabName          string // users
 	PluralKebabName    string // users
 	SnakeName          string // users
+	PluralSnakeName    string // users
+	TableName          string // users — SQL table backing the module entity
+	SQL                SQLDialect
 	CoreVersion        string // github.com/slice-soft/ss-keel-core v1.2.3
 	UsesDatabase       bool
 	UsesGormDatabase   bool
@@ -44,6 +47,7 @@ type ComponentRegistration struct {
 // NewData builds Data from a name in any supported format.
 func NewData(name string) Data {
 	pascal := toPascal(name)
+	pluralSnake := toSnake(toPluralKebab(name))
 	return Data{
 		PackageName:     toPackage(name),
 		PascalName:      pascal,
@@ -51,6 +55,8 @@ func NewData(name string) Data {
 		KebabName:       toKebab(name),
 		PluralKebabName: toPluralKebab(name),
 		SnakeName:       toSnake(name),
+		PluralSnakeName: pluralSnake,
+		TableName:       pluralSnake,
 	}
 }
 

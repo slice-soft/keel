@@ -1020,3 +1020,76 @@ require (
 )
 	`)
 }
+
+// A GORM-backed module ships the DDL that provisions its table: Keel runs no
+// migrations, so without it the table never exists and every endpoint answers
+// 500 at the first request.
+func TestGenerateModuleWithGormWritesBaseSchema(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	writeFile(t, "application.properties", "database.engine=${DATABASE_ENGINE:postgres}\n")
+
+	ensurePersistenceAddonInstalledFn = func(repositoryBackend) error { return nil }
+
+	if err := execute("module", "order-item", Options{UseGormPersistence: true}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+
+	schemaPath := filepath.Join(root, "db", "schema", "order_items.sql")
+	assertFile(t, schemaPath)
+
+	schema := mustRead(t, schemaPath)
+	for _, want := range []string{
+		"CREATE TABLE IF NOT EXISTS order_items",
+		"Engine: postgres",
+		"id         VARCHAR(36) NOT NULL",
+		"created_at BIGINT NOT NULL",
+		"CONSTRAINT pk_order_items PRIMARY KEY (id)",
+	} {
+		if !strings.Contains(schema, want) {
+			t.Errorf("schema missing %q\ngot:\n%s", want, schema)
+		}
+	}
+
+	// The entity must pin the same table the DDL creates, otherwise GORM would
+	// query order_item_entities instead.
+	entity := mustRead(t, filepath.Join(root, "internal", "modules", "orderitem", "order_item_entity.go"))
+	if !strings.Contains(entity, `func (OrderItemEntity) TableName() string`) {
+		t.Errorf("entity does not pin its table name:\n%s", entity)
+	}
+	if !strings.Contains(entity, `return "order_items"`) {
+		t.Errorf("entity pins a table that does not match the DDL:\n%s", entity)
+	}
+}
+
+// The Mongo profile has no DDL to write — collections are created on demand.
+func TestGenerateModuleWithMongoWritesNoSchema(t *testing.T) {
+	root := t.TempDir()
+	oldWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	resetGenerateDeps(t)
+	seedProject(t, root)
+
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	ensurePersistenceAddonInstalledFn = func(repositoryBackend) error { return nil }
+
+	if err := execute("module", "posts", Options{UseMongoPersistence: true}); err != nil {
+		t.Fatalf("generate module failed: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "db", "schema")); err == nil {
+		t.Fatal("did not expect a db/schema directory for a Mongo module")
+	}
+}

@@ -33,11 +33,27 @@ require github.com/slice-soft/ss-keel-gorm v1.0.0
 	}
 }
 
-func TestDoctor_MissingKeelToml(t *testing.T) {
+// A Go project that has not adopted keel.toml yet is the `keel init` path: it
+// is reported as a warning, not an error.
+func TestDoctor_MissingKeelTomlInGoProjectIsAWarning(t *testing.T) {
 	setupDir(t)
+	writeFile(t, "go.mod", "module myapp\n\ngo 1.25.0\n")
+
 	cmd := doctor.NewCommand()
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("expected no error for missing keel.toml, got: %v", err)
+	}
+}
+
+// A directory holding neither keel.toml nor go.mod is not a project at all.
+// Reporting it as healthy would let a wrong working directory or a broken
+// checkout pass CI in green.
+func TestDoctor_FailsWhenDirectoryHoldsNoProject(t *testing.T) {
+	setupDir(t)
+
+	cmd := doctor.NewCommand()
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("expected an error when neither keel.toml nor go.mod is present")
 	}
 }
 

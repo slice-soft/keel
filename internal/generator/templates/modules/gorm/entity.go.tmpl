@@ -9,3 +9,10 @@ type {{.PascalName}}Entity struct {
 	// TODO: replace this placeholder with your real domain fields.
 	Name string `json:"name"`
 }
+
+// TableName pins the table this entity maps to, so it matches the DDL in
+// db/schema/{{.TableName}}.sql instead of the name GORM would derive from the
+// Go type. Rename in both places or neither.
+func ({{.PascalName}}Entity) TableName() string {
+	return "{{.TableName}}"
+}
