@@ -232,10 +232,21 @@ func checkAddonVersions(kt *keeltoml.KeelToml, goModContent string, hasWarnings 
 	go func() { wg.Wait(); close(results) }()
 
 	deadline := time.After(8 * time.Second)
+	// A failed lookup used to be dropped silently, so a machine with no network
+	// produced a report as green as one where every addon was current. The check
+	// not running is itself worth knowing, so failures are counted and reported
+	// once at the end rather than one noisy line per addon.
+	var failed []string
+	var rateLimited bool
+
 	for range candidates {
 		select {
 		case r := <-results:
 			if r.err != nil {
+				failed = append(failed, r.displayID)
+				if isRateLimit(r.err) {
+					rateLimited = true
+				}
 				continue
 			}
 			if updater.IsNewer(r.latest, r.current) {
@@ -246,9 +257,42 @@ func checkAddonVersions(kt *keeltoml.KeelToml, goModContent string, hasWarnings 
 			}
 		case <-deadline:
 			checkWarn("addon version check timed out — skipping remaining")
+			*hasWarnings = true
 			return
 		}
 	}
+
+	reportVersionCheckFailures(failed, len(candidates), rateLimited, hasWarnings)
+}
+
+// reportVersionCheckFailures says what the version check could not determine.
+// Silence here reads as "everything is current", which is the one thing it
+// definitely does not mean.
+func reportVersionCheckFailures(failed []string, total int, rateLimited bool, hasWarnings *bool) {
+	if len(failed) == 0 {
+		return
+	}
+	*hasWarnings = true
+
+	switch {
+	case rateLimited:
+		checkWarn(fmt.Sprintf("could not check %d addon version(s): GitHub rate limit reached", len(failed)))
+		fmt.Println("       Unauthenticated requests are limited to 60/hour per IP.")
+		fmt.Println("       Set GITHUB_TOKEN to raise it, or re-run later.")
+	case len(failed) == total:
+		checkWarn(fmt.Sprintf("could not check any addon version (%d): GitHub unreachable", total))
+		fmt.Println("       The rest of this report is unaffected — only version freshness is unknown.")
+	default:
+		checkWarn(fmt.Sprintf("could not check %d of %d addon versions: %s",
+			len(failed), total, strings.Join(failed, ", ")))
+	}
+}
+
+// isRateLimit reports whether the failure was GitHub throttling us rather than
+// the addon being missing or the network being down — they need different
+// advice, and 403 is by far the most common of the three in practice.
+func isRateLimit(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "403")
 }
 
 // checkRequiredEnvVars verifies that each required [[env]] entry has a value.

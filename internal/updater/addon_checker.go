@@ -26,6 +26,17 @@ type AddonUpdate struct {
 
 var fetchAddonReleaseFn = fetchAddonLatestRelease
 
+// githubToken returns the first token set, preferring the name the GitHub CLI
+// and Actions both use so a machine already authenticated needs no extra setup.
+func githubToken() string {
+	for _, key := range []string{"GITHUB_TOKEN", "GH_TOKEN"} {
+		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // IsNewer reports whether latest is a newer semver than current.
 // Exported wrapper around the internal isNewer for use by other packages.
 func IsNewer(latest, current string) bool {
@@ -52,7 +63,19 @@ func fetchAddonLatestRelease(addonID string) (string, error) {
 	repo := "ss-keel-" + addonID
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", keelAddonOrg, repo)
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	// Unauthenticated GitHub allows 60 requests/hour per IP. A developer on a
+	// shared or CI address burns that quickly, and the failure reads as "no
+	// release found" unless a token lifts the limit to 5000.
+	if token := githubToken(); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
