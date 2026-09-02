@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/slice-soft/keel/compare/v1.21.0...v1.22.0) (2026-09-02)
+
+
+### Features
+
+* generate base SQL schema for GORM modules and check it in doctor ([#57](https://github.com/slice-soft/keel/issues/57)) ([138fbea](https://github.com/slice-soft/keel/commit/138fbeaaab06c9b1b86d16fbcbb1b14706f2bbaa))
+
 ## [1.21.0](https://github.com/slice-soft/keel/compare/v1.20.0...v1.21.0) (2026-05-11)
 
 
